@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { ArrowRight, Mail, Lock } from "lucide-react";
+import { ArrowRight, Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { LiquidCursor } from "@/components/shared/LiquidCursor";
 import { GoogleLogin } from "@react-oauth/google";
 
@@ -22,6 +22,7 @@ export default function LoginPage() {
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // handle input change
   const handleChange = (e) => {
@@ -149,7 +150,7 @@ export default function LoginPage() {
             <div className="relative">
               <Lock className="absolute left-3 top-3 w-5 h-5 opacity-50" />
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 name="password"
                 placeholder="Password"
                 value={form.password}
@@ -157,6 +158,13 @@ export default function LoginPage() {
                 className="w-full border px-10 py-3 rounded-lg"
                 required
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-3 opacity-50 hover:opacity-100 transition-opacity"
+              >
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
             </div>
 
             <div className="flex justify-end">

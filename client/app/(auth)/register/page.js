@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { ArrowRight, Mail, Lock, User } from "lucide-react";
+import { ArrowRight, Mail, Lock, User, Eye, EyeOff } from "lucide-react";
 import { LiquidCursor } from "@/components/shared/LiquidCursor";
 import { GoogleLogin } from "@react-oauth/google";
 import { useState } from "react";
@@ -23,6 +23,7 @@ export default function Signup() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -262,7 +263,7 @@ export default function Signup() {
                 </div>
                 {/* ✅ FIX 7: wired to state + minLength matches hint */}
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
                   value={form.password}
                   onChange={(e) =>
@@ -272,6 +273,13 @@ export default function Signup() {
                   className="w-full rounded-xl border-[3px] border-[var(--ink)] bg-[var(--background)] px-12 py-3 font-medium transition-colors focus:bg-white focus:outline-none focus:ring-4 focus:ring-[var(--electric)]/30"
                   required
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-3 opacity-50 hover:opacity-100 transition-opacity"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
               </div>
               <p className="text-xs text-[var(--ink)]/60 font-medium">
                 Must be at least 8 characters long.
