@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import { ArrowRight, Mail, Lock, User } from "lucide-react";
 import { LiquidCursor } from "@/components/shared/LiquidCursor";
+import { GoogleLogin } from "@react-oauth/google";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
@@ -38,6 +39,23 @@ export default function Signup() {
       setIsSubmitted(true);
     } catch (err) {
       setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleSuccess = async (credentialResponse) => {
+    try {
+      setLoading(true);
+      const data = await api("/api/auth/google", {
+        method: "POST",
+        body: JSON.stringify({ idToken: credentialResponse.credential }),
+      });
+
+      setUser(data.user);
+      router.push("/dashboard");
+    } catch (err) {
+      setError(err.message || "Google signup failed");
     } finally {
       setLoading(false);
     }
@@ -278,6 +296,23 @@ export default function Signup() {
               )}
             </button>
           </form>
+
+          <div className="my-8 flex items-center gap-2 text-sm opacity-40">
+            <div className="h-[1px] flex-1 bg-current" />
+            OR
+            <div className="h-[1px] flex-1 bg-current" />
+          </div>
+
+          <div className="flex justify-center">
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={() => setError("Google signup failed")}
+              useOneTap
+              theme="outline"
+              shape="pill"
+              text="signup_with"
+            />
+          </div>
 
           <div className="mt-8 text-center text-sm font-medium">
             Already have an account?{" "}

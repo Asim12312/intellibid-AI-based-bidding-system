@@ -1,4 +1,4 @@
-import { signupService, loginService, verifyEmailService } from './auth.service.js';
+import { signupService, loginService, verifyEmailService, googleLoginService } from './auth.service.js';
 import { signupSchema, loginSchema } from './auth.validation.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
 import { sendTokenCookie } from '../../utils/cookie.js';
@@ -42,4 +42,18 @@ export const verifyEmail = asyncHandler(async (req, res) => {
     const { token } = req.query;
     const result = await verifyEmailService(token);
     res.status(200).json({ success: true, ...result });
+});
+
+export const googleLogin = asyncHandler(async (req, res) => {
+    const { idToken } = req.body;
+    const { token, user } = await googleLoginService(idToken);
+
+    res.cookie('token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    res.status(200).json({ success: true, user });
 });

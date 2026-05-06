@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import { ArrowRight, Mail, Lock } from "lucide-react";
 import { LiquidCursor } from "@/components/shared/LiquidCursor";
+import { GoogleLogin } from "@react-oauth/google";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -70,6 +71,23 @@ export default function LoginPage() {
       router.push(roleRoutes[data.user.role] || "/dashboard");
     } catch (err) {
       setError(err?.message || "Login failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleSuccess = async (credentialResponse) => {
+    try {
+      setLoading(true);
+      const data = await api("/api/auth/google", {
+        method: "POST",
+        body: JSON.stringify({ idToken: credentialResponse.credential }),
+      });
+
+      setUser(data.user);
+      router.push("/dashboard");
+    } catch (err) {
+      setError(err.message || "Google login failed");
     } finally {
       setLoading(false);
     }
@@ -155,6 +173,22 @@ export default function LoginPage() {
               {loading ? "Signing in..." : "Sign In"}
             </button>
           </form>
+
+          <div className="my-6 flex items-center gap-2 text-sm opacity-40">
+            <div className="h-[1px] flex-1 bg-current" />
+            OR
+            <div className="h-[1px] flex-1 bg-current" />
+          </div>
+
+          <div className="flex justify-center">
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={() => setError("Google login failed")}
+              useOneTap
+              theme="outline"
+              shape="pill"
+            />
+          </div>
 
           {/* Footer */}
           <p className="mt-6 text-center text-sm">

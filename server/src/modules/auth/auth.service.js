@@ -3,6 +3,9 @@ import User from '../../models/user.model.js';
 import { generateToken, generateVerificationToken } from '../../services/token.service.js';
 import { sendVerificationEmail } from '../../services/email.service.js';
 import { ApiError } from '../../utils/ApiError.js';
+import { OAuth2Client } from 'google-auth-library';
+
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 export const signupService = async (data) => {
     // Check if user already exists
@@ -80,4 +83,30 @@ export const verifyEmailService = async (token) => {
     await user.save();
 
     return { message: 'Email verified successfully' };
+};
+
+export const googleLoginService = async (idToken) => {
+    const ticket = await client.verifyIdToken({
+        idToken,
+        audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    
+    const { email, sub: googleId, given_name, family_name, picture } = ticket.getPayload();
+
+    let user = await User.findOne({ email });
+
+    if (!user) {
+        // Create new user if not found (Social Login)
+        user = await User.create({
+            firstName: given_name,
+            lastName: family_name,
+            email,
+            password: Math.random().toString(36).slice(-10), // Random password for social accounts
+            isVerified: true, // Google accounts are pre-verified
+            role: 'buyer', // Default role for new social users
+        });
+    }
+
+    const token = generateToken(user);
+    return { token, user: { id: user._id, email: user.email, role: user.role } };
 };
