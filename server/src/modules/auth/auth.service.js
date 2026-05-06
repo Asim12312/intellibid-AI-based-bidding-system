@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs';
 import User from '../../models/user.model.js';
 import { generateToken, generateVerificationToken } from '../../services/token.service.js';
-import { sendVerificationEmail } from '../../services/email.service.js';
+import { sendVerificationEmail, sendPasswordResetEmail } from '../../services/email.service.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { OAuth2Client } from 'google-auth-library';
 
@@ -109,4 +109,34 @@ export const googleLoginService = async (idToken) => {
 
     const token = generateToken(user);
     return { token, user: { id: user._id, email: user.email, role: user.role } };
+};
+
+export const forgotPasswordService = async (email) => {
+    const user = await User.findOne({ email });
+    if (!user) throw new ApiError(404, 'User not found');
+
+    const resetToken = generateVerificationToken();
+    user.resetPasswordToken = resetToken;
+    user.resetPasswordExpires = Date.now() + 1 * 60 * 60 * 1000; // 1 hour
+    await user.save();
+
+    await sendPasswordResetEmail(user.email, resetToken);
+    return { message: 'Password reset email sent' };
+};
+
+export const resetPasswordService = async (token, newPassword) => {
+    const user = await User.findOne({
+        resetPasswordToken: token,
+        resetPasswordExpires: { $gt: Date.now() },
+    });
+
+    if (!user) throw new ApiError(400, 'Invalid or expired reset token');
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    user.password = hashedPassword;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+    await user.save();
+
+    return { message: 'Password reset successfully' };
 };

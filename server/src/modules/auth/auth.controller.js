@@ -1,4 +1,4 @@
-import { signupService, loginService, verifyEmailService, googleLoginService } from './auth.service.js';
+import { signupService, loginService, verifyEmailService, googleLoginService, forgotPasswordService, resetPasswordService } from './auth.service.js';
 import { signupSchema, loginSchema } from './auth.validation.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
 import { sendTokenCookie } from '../../utils/cookie.js';
@@ -56,4 +56,16 @@ export const googleLogin = asyncHandler(async (req, res) => {
     });
 
     res.status(200).json({ success: true, user });
+});
+
+export const forgotPassword = asyncHandler(async (req, res) => {
+    const { email } = req.body;
+    const result = await forgotPasswordService(email);
+    res.status(200).json({ success: true, ...result });
+});
+
+export const resetPassword = asyncHandler(async (req, res) => {
+    const { token, password } = req.body;
+    const result = await resetPasswordService(token, password);
+    res.status(200).json({ success: true, ...result });
 });

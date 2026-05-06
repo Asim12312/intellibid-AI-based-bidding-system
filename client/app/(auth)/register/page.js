@@ -307,7 +307,6 @@ export default function Signup() {
             <GoogleLogin
               onSuccess={handleGoogleSuccess}
               onError={() => setError("Google signup failed")}
-              useOneTap
               theme="outline"
               shape="pill"
               text="signup_with"

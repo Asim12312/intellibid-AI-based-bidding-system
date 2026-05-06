@@ -159,6 +159,15 @@ export default function LoginPage() {
               />
             </div>
 
+            <div className="flex justify-end">
+              <Link
+                href="/forgot-password"
+                className="text-xs font-bold uppercase opacity-50 hover:opacity-100 hover:text-[var(--hotpink)] transition-all"
+              >
+                Forgot Password?
+              </Link>
+            </div>
+
             {/* Error */}
             {error && (
               <p className="text-red-500 text-sm">{error}</p>
@@ -184,7 +193,6 @@ export default function LoginPage() {
             <GoogleLogin
               onSuccess={handleGoogleSuccess}
               onError={() => setError("Google login failed")}
-              useOneTap
               theme="outline"
               shape="pill"
             />
