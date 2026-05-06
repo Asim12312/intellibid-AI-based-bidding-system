@@ -4,12 +4,89 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import { ArrowRight, Mail, Lock, User } from "lucide-react";
 import { LiquidCursor } from "@/components/shared/LiquidCursor";
+import { GoogleLogin } from "@react-oauth/google";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuthStore } from "@/store/authStore";
+import { api } from "@/lib/api";
 
-export default function RegisterPage() {
+export default function Signup() {
+  const router = useRouter();
+  const setUser = useAuthStore((s) => s.setUser);
+  const [form, setForm] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    password: "",
+    role: "buyer",
+  });
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+
+    try {
+      const data = await api("/api/auth/signup", {
+        method: "POST",
+        body: JSON.stringify(form),
+      });
+
+      setUser(data.user);
+      setIsSubmitted(true);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleSuccess = async (credentialResponse) => {
+    try {
+      setLoading(true);
+      const data = await api("/api/auth/google", {
+        method: "POST",
+        body: JSON.stringify({ idToken: credentialResponse.credential }),
+      });
+
+      setUser(data.user);
+      router.push("/dashboard");
+    } catch (err) {
+      setError(err.message || "Google signup failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (isSubmitted) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[var(--background)] p-6 grain">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="w-full max-w-md bg-white p-10 rounded-2xl border-[3px] border-[var(--ink)] shadow-[var(--shadow-brutal)] text-center"
+        >
+          <div className="text-6xl mb-6">📩</div>
+          <h1 className="text-3xl font-black mb-4 uppercase">Check your email</h1>
+          <p className="mb-8 font-medium opacity-80">
+            We've sent a verification link to <span className="font-bold text-[var(--electric)]">{form.email}</span>. 
+            Please verify your account to continue.
+          </p>
+          <Link href="/login" className="block w-full bg-[var(--acid)] py-4 font-black border-[3px] border-[var(--ink)] shadow-[2px_2px_0_0_var(--ink)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all uppercase">
+            Go to Login
+          </Link>
+        </motion.div>
+      </div>
+    );
+  }
+
   return (
     <div className="relative flex min-h-screen items-center justify-center bg-[var(--background)] p-6 text-[var(--ink)] overflow-hidden grain">
       <LiquidCursor />
-      
+
       {/* Decorative Background Elements */}
       <motion.div
         animate={{ y: [0, 20, 0], rotate: [0, -5, 0] }}
@@ -29,48 +106,88 @@ export default function RegisterPage() {
         className="relative z-10 w-full max-w-lg my-12"
       >
         <div className="absolute -top-10 left-0 md:-top-16">
-          <Link href="/" className="inline-flex items-center gap-2 font-display text-sm font-bold uppercase hover:text-[var(--acid)] transition-colors">
-            <ArrowRight className="h-4 w-4 rotate-180" strokeWidth={3} /> Back to Home
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 font-display text-sm font-bold uppercase hover:text-[var(--acid)] transition-colors"
+          >
+            <ArrowRight className="h-4 w-4 rotate-180" strokeWidth={3} /> Back
+            to Home
           </Link>
         </div>
 
         <div className="mb-6 flex justify-center">
-          <Link href="/" className="flex h-16 w-16 items-center justify-center rounded-2xl border-[4px] border-[var(--ink)] bg-[var(--electric)] font-display text-2xl font-black text-white shadow-[var(--shadow-brutal)] transition-transform hover:-translate-y-1 hover:rotate-6">
+          <Link
+            href="/"
+            className="flex h-16 w-16 items-center justify-center rounded-2xl border-[4px] border-[var(--ink)] bg-[var(--electric)] font-display text-2xl font-black text-white shadow-[var(--shadow-brutal)] transition-transform hover:-translate-y-1 hover:rotate-6"
+          >
             IB
           </Link>
         </div>
 
         <div className="brutal-lg overflow-hidden bg-white p-8 md:p-10">
           <div className="mb-8 text-center">
-            <h1 className="font-display text-4xl font-black tracking-tighter">Join the hustle.</h1>
-            <p className="mt-2 text-[var(--ink)]/70">Create an account and start winning.</p>
+            <h1 className="font-display text-4xl font-black tracking-tighter">
+              Join the hustle.
+            </h1>
+            <p className="mt-2 text-[var(--ink)]/70">
+              Create an account and start winning.
+            </p>
           </div>
 
-          <form onSubmit={(e) => { e.preventDefault(); window.location.href = '/dashboard'; }} className="space-y-5">
+          {/* ✅ FIX 1: form now calls handleSubmit */}
+          <form onSubmit={handleSubmit} className="space-y-5">
+
+            {/* ✅ FIX 2: Error message displayed */}
+            {error && (
+              <div className="rounded-xl border-[3px] border-red-500 bg-red-50 px-4 py-3 text-sm font-bold text-red-600">
+                {error}
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div className="space-y-2">
-                <label className="font-display text-sm font-bold uppercase tracking-wide">First Name</label>
+                <label className="font-display text-sm font-bold uppercase tracking-wide">
+                  First Name
+                </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
-                    <User className="h-5 w-5 text-[var(--ink)]/50" strokeWidth={2.5} />
+                    <User
+                      className="h-5 w-5 text-[var(--ink)]/50"
+                      strokeWidth={2.5}
+                    />
                   </div>
+                  {/* ✅ FIX 3: wired to state */}
                   <input
                     type="text"
                     placeholder="Jane"
+                    value={form.firstName}
+                    onChange={(e) =>
+                      setForm({ ...form, firstName: e.target.value })
+                    }
                     className="w-full rounded-xl border-[3px] border-[var(--ink)] bg-[var(--background)] px-12 py-3 font-medium transition-colors focus:bg-white focus:outline-none focus:ring-4 focus:ring-[var(--electric)]/30"
                     required
                   />
                 </div>
               </div>
               <div className="space-y-2">
-                <label className="font-display text-sm font-bold uppercase tracking-wide">Last Name</label>
+                <label className="font-display text-sm font-bold uppercase tracking-wide">
+                  Last Name
+                </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
-                    <User className="h-5 w-5 text-[var(--ink)]/50" strokeWidth={2.5} />
+                    <User
+                      className="h-5 w-5 text-[var(--ink)]/50"
+                      strokeWidth={2.5}
+                    />
                   </div>
+                  {/* ✅ FIX 4: wired to state */}
                   <input
                     type="text"
                     placeholder="Doe"
+                    value={form.lastName}
+                    onChange={(e) =>
+                      setForm({ ...form, lastName: e.target.value })
+                    }
                     className="w-full rounded-xl border-[3px] border-[var(--ink)] bg-[var(--background)] px-12 py-3 font-medium transition-colors focus:bg-white focus:outline-none focus:ring-4 focus:ring-[var(--electric)]/30"
                     required
                   />
@@ -79,14 +196,22 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="font-display text-sm font-bold uppercase tracking-wide">Email</label>
+              <label className="font-display text-sm font-bold uppercase tracking-wide">
+                Email
+              </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
-                  <Mail className="h-5 w-5 text-[var(--ink)]/50" strokeWidth={2.5} />
+                  <Mail
+                    className="h-5 w-5 text-[var(--ink)]/50"
+                    strokeWidth={2.5}
+                  />
                 </div>
+                {/* ✅ FIX 5: wired to state */}
                 <input
                   type="email"
                   placeholder="you@example.com"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
                   className="w-full rounded-xl border-[3px] border-[var(--ink)] bg-[var(--background)] px-12 py-3 font-medium transition-colors focus:bg-white focus:outline-none focus:ring-4 focus:ring-[var(--electric)]/30"
                   required
                 />
@@ -94,16 +219,29 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-3">
-              <label className="font-display text-sm font-bold uppercase tracking-wide">Account Type</label>
+              <label className="font-display text-sm font-bold uppercase tracking-wide">
+                Account Type
+              </label>
               <div className="grid grid-cols-3 gap-3">
                 {[
                   { id: "buyer", label: "Buyer", color: "var(--electric)" },
                   { id: "seller", label: "Seller", color: "var(--acid)" },
-                  { id: "hybrid", label: "Hybrid", color: "var(--hotpink)" }
+                  { id: "hybrid", label: "Hybrid", color: "var(--hotpink)" },
                 ].map((type) => (
                   <label key={type.id} className="relative cursor-pointer">
-                    <input type="radio" name="accountType" value={type.id} className="peer sr-only" defaultChecked={type.id === "buyer"} />
-                    <div className="flex items-center justify-center rounded-xl border-[3px] border-[var(--ink)] bg-white px-2 py-3 font-display text-xs font-bold uppercase transition-all peer-checked:bg-[var(--bg-color)] peer-checked:shadow-[var(--shadow-brutal)] peer-checked:-translate-y-1 hover:-translate-y-0.5" style={{ '--bg-color': type.color }}>
+                    {/* ✅ FIX 6: role radio wired to state */}
+                    <input
+                      type="radio"
+                      name="accountType"
+                      value={type.id}
+                      checked={form.role === type.id}
+                      onChange={() => setForm({ ...form, role: type.id })}
+                      className="peer sr-only"
+                    />
+                    <div
+                      className="flex items-center justify-center rounded-xl border-[3px] border-[var(--ink)] bg-white px-2 py-3 font-display text-xs font-bold uppercase transition-all peer-checked:bg-[var(--bg-color)] peer-checked:shadow-[var(--shadow-brutal)] peer-checked:-translate-y-1 hover:-translate-y-0.5"
+                      style={{ "--bg-color": type.color }}
+                    >
                       {type.label}
                     </div>
                   </label>
@@ -112,29 +250,76 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="font-display text-sm font-bold uppercase tracking-wide">Password</label>
+              <label className="font-display text-sm font-bold uppercase tracking-wide">
+                Password
+              </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
-                  <Lock className="h-5 w-5 text-[var(--ink)]/50" strokeWidth={2.5} />
+                  <Lock
+                    className="h-5 w-5 text-[var(--ink)]/50"
+                    strokeWidth={2.5}
+                  />
                 </div>
+                {/* ✅ FIX 7: wired to state + minLength matches hint */}
                 <input
                   type="password"
                   placeholder="••••••••"
+                  value={form.password}
+                  onChange={(e) =>
+                    setForm({ ...form, password: e.target.value })
+                  }
+                  minLength={8}
                   className="w-full rounded-xl border-[3px] border-[var(--ink)] bg-[var(--background)] px-12 py-3 font-medium transition-colors focus:bg-white focus:outline-none focus:ring-4 focus:ring-[var(--electric)]/30"
                   required
                 />
               </div>
-              <p className="text-xs text-[var(--ink)]/60 font-medium">Must be at least 8 characters long.</p>
+              <p className="text-xs text-[var(--ink)]/60 font-medium">
+                Must be at least 8 characters long.
+              </p>
             </div>
 
-            <button type="submit" className="group relative mt-8 flex w-full items-center justify-center gap-2 rounded-xl border-[3px] border-[var(--ink)] bg-[var(--electric)] px-6 py-4 font-display text-lg font-black uppercase shadow-[var(--shadow-brutal)] transition-transform hover:-translate-y-1 active:translate-y-0 active:shadow-none">
-              Create Account <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" strokeWidth={3} />
+            <button
+              type="submit"
+              disabled={loading}
+              className="group relative mt-8 flex w-full items-center justify-center gap-2 rounded-xl border-[3px] border-[var(--ink)] bg-[var(--electric)] px-6 py-4 font-display text-lg font-black uppercase shadow-[var(--shadow-brutal)] transition-transform hover:-translate-y-1 active:translate-y-0 active:shadow-none disabled:opacity-60 disabled:cursor-not-allowed disabled:translate-y-0"
+            >
+              {loading ? (
+                "Creating account..."
+              ) : (
+                <>
+                  Create Account{" "}
+                  <ArrowRight
+                    className="h-5 w-5 transition-transform group-hover:translate-x-1"
+                    strokeWidth={3}
+                  />
+                </>
+              )}
             </button>
           </form>
 
+          <div className="my-8 flex items-center gap-2 text-sm opacity-40">
+            <div className="h-[1px] flex-1 bg-current" />
+            OR
+            <div className="h-[1px] flex-1 bg-current" />
+          </div>
+
+          <div className="flex justify-center">
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={() => setError("Google signup failed")}
+              useOneTap
+              theme="outline"
+              shape="pill"
+              text="signup_with"
+            />
+          </div>
+
           <div className="mt-8 text-center text-sm font-medium">
             Already have an account?{" "}
-            <Link href="/login" className="font-bold text-[var(--hotpink)] hover:underline decoration-2 underline-offset-4">
+            <Link
+              href="/login"
+              className="font-bold text-[var(--hotpink)] hover:underline decoration-2 underline-offset-4"
+            >
               Sign in here
             </Link>
           </div>

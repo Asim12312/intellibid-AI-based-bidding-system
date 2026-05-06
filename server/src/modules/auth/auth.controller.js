@@ -1,80 +1,59 @@
+import { signupService, loginService, verifyEmailService, googleLoginService } from './auth.service.js';
+import { signupSchema, loginSchema } from './auth.validation.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
-import { ApiError } from '../../utils/ApiError.js';
-import { ApiResponse } from '../../utils/ApiResponse.js';
-import { User } from '../user/user.model.js';
+import { sendTokenCookie } from '../../utils/cookie.js';
 
-export const register = asyncHandler(async (req, res) => {
-  const { firstName, lastName, email, password, role } = req.body;
+export const signup = asyncHandler(async (req, res) => {
+    // Validate input with Zod
+    const data = signupSchema.parse(req.body);
 
-  const existedUser = await User.findOne({ email });
-  if (existedUser) {
-    throw new ApiError(409, "User with email already exists");
-  }
+    // Run signup business logic
+    const { token, user } = await signupService(data);
 
-  const user = await User.create({
-    firstName,
-    lastName,
-    email,
-    password,
-    role
-  });
+    // Store JWT in HTTP-only cookie
+    sendTokenCookie(res, token);
 
-  const createdUser = await User.findById(user._id).select("-password");
-
-  if (!createdUser) {
-    throw new ApiError(500, "Something went wrong while registering the user");
-  }
-
-  return res.status(201).json(
-    new ApiResponse(201, createdUser, "User registered successfully")
-  );
+    // Send response
+    res.status(201).json({
+        success: true,
+        message: 'Account created. Check your email to verify.',
+        user,
+    });
 });
 
 export const login = asyncHandler(async (req, res) => {
-  const { email, password } = req.body;
+    const data = loginSchema.parse(req.body);
+    const { token, user } = await loginService(data);
+    sendTokenCookie(res, token);
 
-  const user = await User.findOne({ email });
-  if (!user) {
-    throw new ApiError(404, "User does not exist");
-  }
-
-  const isPasswordValid = await user.comparePassword(password);
-  if (!isPasswordValid) {
-    throw new ApiError(401, "Invalid user credentials");
-  }
-
-  const token = user.generateToken();
-
-  const loggedInUser = await User.findById(user._id).select("-password");
-
-  const options = {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production"
-  };
-
-  return res
-    .status(200)
-    .cookie("token", token, options)
-    .json(
-      new ApiResponse(
-        200,
-        {
-          user: loggedInUser,
-          token
-        },
-        "User logged in successfully"
-      )
-    );
+    res.status(200).json({
+        success: true,
+        message: 'Logged in successfully',
+        user,
+    });
 });
 
 export const logout = asyncHandler(async (req, res) => {
-  const options = {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production"
-  };
+    res.clearCookie('token');
+    res.status(200).json({ success: true, message: 'Logged out' });
+});
 
-  return res
-    .status(200)
-    .clearCookie("token", options)
-    .json(new ApiResponse(200, {}, "User logged out successfully"));
+export const verifyEmail = asyncHandler(async (req, res) => {
+    const { token } = req.query;
+    const result = await verifyEmailService(token);
+    res.status(200).json({ success: true, ...result });
+});
+
+export const googleLogin = asyncHandler(async (req, res) => {
+    const { idToken } = req.body;
+    const { token, user } = await googleLoginService(idToken);
+
+    res.cookie('token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    res.status(200).json({ success: true, user });
 });

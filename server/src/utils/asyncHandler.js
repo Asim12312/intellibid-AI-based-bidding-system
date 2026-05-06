@@ -1,7 +1,5 @@
-const asyncHandler = (requestHandler) => {
-    return (req, res, next) => {
-        Promise.resolve(requestHandler(req, res, next)).catch((err) => next(err));
-    };
-};
+// async handler wrapper for reducing code of try catch blocks
 
-export { asyncHandler };
+export const asyncHandler = (fn) => (req, res, next) => {
+    Promise.resolve(fn(req, res, next)).catch(next);
+};

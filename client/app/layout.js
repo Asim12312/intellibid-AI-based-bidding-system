@@ -1,5 +1,6 @@
 import { Space_Grotesk, Inter } from "next/font/google";
 import "./globals.css";
+import GoogleProvider from "@/components/providers/GoogleProvider";
 
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-display",
@@ -20,7 +21,9 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" className={`${spaceGrotesk.variable} ${inter.variable} h-full`}>
       <body className="min-h-full antialiased selection:bg-[var(--hotpink)] selection:text-white">
-        {children}
+        <GoogleProvider>
+          {children}
+        </GoogleProvider>
       </body>
     </html>
   );
