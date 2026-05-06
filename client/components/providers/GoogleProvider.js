@@ -6,7 +6,7 @@ export default function GoogleProvider({ children }) {
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
   
   if (!clientId) {
-    console.warn("Google Client ID is missing. Google Login will not work.");
+    console.error("❌ Google Client ID is missing! Add NEXT_PUBLIC_GOOGLE_CLIENT_ID to your client/.env.local");
     return <>{children}</>;
   }
 
