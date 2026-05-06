@@ -18,6 +18,8 @@ export const signupService = async (data) => {
 
     // Create user in DB
     const user = await User.create({
+        firstName: data.firstName,
+        lastName: data.lastName,
         email: data.email,
         password: hashedPassword,
         role: data.role,
@@ -26,7 +28,11 @@ export const signupService = async (data) => {
     });
 
     // Send verification email
-    await sendVerificationEmail(user.email, emailToken);
+    try {
+        await sendVerificationEmail(user.email, emailToken);
+    } catch (error) {
+        console.error("Failed to send verification email:", error.message);
+    }
 
     // Generate JWT
     const token = generateToken(user);
@@ -37,11 +43,22 @@ export const signupService = async (data) => {
 export const loginService = async (data) => {
     // Find user
     const user = await User.findOne({ email: data.email });
-    if (!user) throw new ApiError(401, 'Invalid email or password');
+    if (!user) {
+        console.log(`Login failed: User not found for email ${data.email}`);
+        throw new ApiError(401, 'Invalid email or password');
+    }
+
+    // Check verification
+    if (!user.isVerified) {
+        throw new ApiError(401, 'Please verify your email before logging in');
+    }
 
     // Compare password
     const isMatch = await bcrypt.compare(data.password, user.password);
-    if (!isMatch) throw new ApiError(401, 'Invalid email or password');
+    if (!isMatch) {
+        console.log(`Login failed: Password mismatch for user ${data.email}`);
+        throw new ApiError(401, 'Invalid email or password');
+    }
 
     // Generate JWT
     const token = generateToken(user);

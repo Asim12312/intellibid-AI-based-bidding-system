@@ -1,24 +1,31 @@
 {
   "name": "intellibid-server",
   "version": "1.0.0",
+  "type": "module",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js"
   },
   "dependencies": {
-    "express": "^4.21.0",
-    "mongoose": "^8.7.0",
-    "dotenv": "^16.4.5",
-    "cors": "^2.8.5",
-    "helmet": "^8.0.0",
-    "morgan": "^1.10.0",
-    "jsonwebtoken": "^9.0.2",
     "bcryptjs": "^2.4.3",
-    "zod": "^3.23.8",
-    "cookie-parser": "^1.4.6"
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "dotenv": "^16.6.1",
+    "express": "^4.22.1",
+    "express-rate-limit": "^8.5.1",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^8.23.1",
+    "morgan": "^1.10.0",
+    "nodemailer": "^8.0.7",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
-    "nodemon": "^3.1.7"
-  }
+    "nodemon": "^3.1.14"
+  },
+  "description": "",
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
 }

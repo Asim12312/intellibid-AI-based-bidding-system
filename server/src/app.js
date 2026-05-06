@@ -2,8 +2,9 @@ import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
-import { rateLimiter } from './middleware/rateLimiter.js'
+import { limiter } from './middleware/rateLimiter.js'
 import authRoutes from './modules/auth/auth.routes.js';
+import { errorHandler } from './middleware/error.middleware.js';
 
 const app = express();
 
@@ -21,6 +22,9 @@ app.use(cookieParser());
 
 // routes
 app.use('/api/auth', authRoutes);
+
+// Error Handler
+app.use(errorHandler);
 
 export default app;
 
