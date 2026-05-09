@@ -1,28 +1,59 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   ArrowUpRight, Bot, Gavel, TrendingUp, BellRing, 
   Clock, CheckCircle2, Activity, Sparkles, Plus, Search,
   ChevronRight, ArrowRight
 } from "lucide-react";
-import { MagneticButton } from "@/components/shared/MagneticButton";
 import Link from "next/link";
-
-const activeBids = [
-  { id: "4471", item: "Air Jordan 1 'Chicago' 1985", bid: "$12,400", status: "Winning", timeLeft: "02:14:09", color: "var(--acid)" },
-  { id: "8912", item: "Polaroid SX-70 Land Camera", bid: "$420", status: "Outbid", timeLeft: "01:02:44", color: "var(--hotpink)" },
-  { id: "2201", item: "Rolex Submariner 16610", bid: "$8,750", status: "Winning", timeLeft: "03:38:11", color: "var(--electric)" },
-];
-
-const tailoredPicks = [
-  { item: "Mint Sony Walkman TPS-L2", currentBid: "$980", estValue: "$1,200", image: "/lot-walkman.jpg", tag: "Tech" },
-  { item: "Fender Stratocaster '78 Sunburst", currentBid: "$3,210", estValue: "$4,000", image: "/lot-guitar.jpg", tag: "Music" },
-];
+import { useAuthStore } from "@/store/authStore";
+import { api } from "@/lib/api";
 
 export default function BuyerDashboardPage() {
   const [depositOpen, setDepositOpen] = useState(false);
+  const user = useAuthStore((state) => state.user);
+  
+  const [stats, setStats] = useState({ activeBids: 0, itemsWon: 0, totalSpent: 0, savedItems: 0 });
+  const [activeBids, setActiveBids] = useState([]);
+  const [recommendations, setRecommendations] = useState([]);
+  const [activity, setActivity] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const [statsRes, bidsRes, recsRes, actRes] = await Promise.all([
+          api('/api/buyer/dashboard/stats'),
+          api('/api/buyer/bids/active'),
+          api('/api/buyer/recommendations'),
+          api('/api/buyer/activity')
+        ]);
+
+        if (statsRes?.success) setStats(statsRes.data);
+        if (bidsRes?.success) setActiveBids(bidsRes.data);
+        if (recsRes?.success) setRecommendations(recsRes.data);
+        if (actRes?.success) setActivity(actRes.data);
+      } catch (error) {
+        console.error("Failed to load dashboard data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-[var(--background)]">
+        <div className="flex h-16 w-16 items-center justify-center rounded-2xl border-[3px] border-[var(--ink)] bg-[var(--electric)] text-white shadow-[4px_4px_0_0_var(--ink)] animate-pulse">
+          <Activity className="h-8 w-8 animate-spin" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -38,11 +69,11 @@ export default function BuyerDashboardPage() {
           </div>
           <div className="flex items-center gap-6">
             <div className="hidden text-right md:block">
-              <div className="text-xs font-bold uppercase tracking-wide text-[var(--ink)]/60">Wallet Balance</div>
-              <div className="font-display text-xl font-black">$4,250.00</div>
+              <div className="text-xs font-bold uppercase tracking-wide text-[var(--ink)]/60">Total Spent</div>
+              <div className="font-display text-xl font-black">${stats?.totalSpent?.toLocaleString() || 0}</div>
             </div>
             <Link href="/profile" className="flex h-12 w-12 items-center justify-center rounded-2xl border-[3px] border-[var(--ink)] bg-[var(--electric)] overflow-hidden shadow-[2px_2px_0_0_var(--ink)] transition-transform hover:-translate-y-1 hover:shadow-[4px_4px_0_0_var(--ink)]">
-              <img src="/avatar-2.jpg" alt="Profile" className="h-full w-full object-cover" />
+              <div className="font-display font-black text-white text-xl">{user?.firstName?.[0] || 'U'}</div>
             </Link>
           </div>
         </div>
@@ -54,8 +85,8 @@ export default function BuyerDashboardPage() {
         <div className="grid gap-6 md:grid-cols-4 lg:gap-8">
           <div className="brutal-lg col-span-1 flex flex-col justify-between bg-[var(--ink)] p-8 text-white md:col-span-2 shadow-[8px_8px_0_0_var(--acid)]">
             <div>
-              <h2 className="font-display text-4xl font-black md:text-5xl">Welcome back, <span className="text-[var(--acid)]">Maya.</span></h2>
-              <p className="mt-3 text-lg text-white/80 font-medium">You have 3 active bids closing today. The market is hot.</p>
+              <h2 className="font-display text-4xl font-black md:text-5xl">Welcome back, <span className="text-[var(--acid)]">{user?.firstName || 'Buyer'}.</span></h2>
+              <p className="mt-3 text-lg text-white/80 font-medium">You have {stats?.activeBids || 0} active bids closing soon. The market is hot.</p>
             </div>
             <div className="mt-8 flex gap-4">
               <button 
@@ -75,7 +106,7 @@ export default function BuyerDashboardPage() {
               <ArrowUpRight className="h-6 w-6 opacity-50" />
             </div>
             <div>
-              <div className="font-display text-5xl font-black">12</div>
+              <div className="font-display text-5xl font-black">{stats?.itemsWon || 0}</div>
               <div className="mt-1 text-sm font-bold uppercase text-[var(--ink)]/80 tracking-wide">Total Auctions Won</div>
             </div>
           </div>
@@ -88,7 +119,7 @@ export default function BuyerDashboardPage() {
               <TrendingUp className="h-6 w-6 opacity-50" />
             </div>
             <div>
-              <div className="font-display text-5xl font-black">3</div>
+              <div className="font-display text-5xl font-black">{stats?.activeBids || 0}</div>
               <div className="mt-1 text-sm font-bold uppercase text-[var(--ink)]/80 tracking-wide">Active Bids</div>
             </div>
           </div>
@@ -130,72 +161,76 @@ export default function BuyerDashboardPage() {
                   </span>
                   Your Active Bids
                 </h3>
-                <Link href="/auctions" className="flex items-center gap-1 font-display text-sm font-black uppercase text-[var(--ink)] hover:text-[var(--electric)] hover:underline decoration-2 underline-offset-4 transition-colors">
+                <Link href="/buyer/bids" className="flex items-center gap-1 font-display text-sm font-black uppercase text-[var(--ink)] hover:text-[var(--electric)] hover:underline decoration-2 underline-offset-4 transition-colors">
                   View All <ChevronRight className="h-4 w-4" strokeWidth={3} />
                 </Link>
               </div>
               
               <div className="space-y-5">
-                {activeBids.map((bid, i) => (
-                  <motion.div 
-                    key={bid.id} 
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.1 }}
-                    className="brutal group relative flex flex-col justify-between overflow-hidden bg-white p-5 md:flex-row md:items-center hover:-translate-y-1 transition-transform"
-                  >
-                    <div className="absolute left-0 top-0 h-full w-3" style={{ background: bid.color }} />
-                    <div className="ml-4 flex items-center gap-5">
-                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border-[3px] border-[var(--ink)] bg-[var(--background)] font-display text-sm font-black shadow-[2px_2px_0_0_var(--ink)]">
-                        #{bid.id}
-                      </div>
-                      <div>
-                        <div className="font-display text-xl font-black leading-tight group-hover:underline decoration-[3px] underline-offset-4">{bid.item}</div>
-                        <div className="mt-1 text-sm font-bold text-[var(--ink)]/60 flex items-center gap-1">
-                          <Clock className="h-3.5 w-3.5" /> Closes in {bid.timeLeft}
+                {activeBids?.length === 0 ? (
+                  <div className="brutal bg-white p-8 text-center text-[var(--ink)]/60 font-bold uppercase tracking-widest">
+                    No active bids found.
+                  </div>
+                ) : (
+                  activeBids?.map((bid, i) => (
+                    <motion.div 
+                      key={bid.id} 
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.1 }}
+                      className="brutal group relative flex flex-col justify-between overflow-hidden bg-white p-5 md:flex-row md:items-center hover:-translate-y-1 transition-transform"
+                    >
+                      <div className="absolute left-0 top-0 h-full w-3" style={{ background: bid.status === 'winning' ? 'var(--acid)' : 'var(--hotpink)' }} />
+                      <div className="ml-4 flex items-center gap-5">
+                        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border-[3px] border-[var(--ink)] bg-[var(--background)] font-display text-sm font-black shadow-[2px_2px_0_0_var(--ink)] overflow-hidden">
+                          <img src={bid.image} alt="Item" className="w-full h-full object-cover" />
+                        </div>
+                        <div>
+                          <div className="font-display text-xl font-black leading-tight group-hover:underline decoration-[3px] underline-offset-4">{bid.title}</div>
+                          <div className="mt-1 text-sm font-bold text-[var(--ink)]/60 flex items-center gap-1">
+                            <Clock className="h-3.5 w-3.5" /> Closes in {new Date(bid.endTime) > new Date() ? 'Soon' : 'Ended'}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <div className="mt-5 flex flex-wrap items-center justify-between gap-4 border-t-[3px] border-[var(--ink)] pt-4 md:mt-0 md:border-none md:pt-0 md:justify-end md:gap-8">
-                      <div className="text-left md:text-right">
-                        <div className="text-xs font-bold uppercase tracking-widest text-[var(--ink)]/60">Your Bid</div>
-                        <div className="font-display text-2xl font-black">{bid.bid}</div>
+                      <div className="mt-5 flex flex-wrap items-center justify-between gap-4 border-t-[3px] border-[var(--ink)] pt-4 md:mt-0 md:border-none md:pt-0 md:justify-end md:gap-8">
+                        <div className="text-left md:text-right">
+                          <div className="text-xs font-bold uppercase tracking-widest text-[var(--ink)]/60">Your Bid</div>
+                          <div className="font-display text-2xl font-black">${bid.userBid?.toLocaleString() || 0}</div>
+                        </div>
+                        <div className={`flex items-center gap-2 rounded-full border-[3px] border-[var(--ink)] px-4 py-2 font-display text-sm font-black uppercase shadow-[2px_2px_0_0_var(--ink)] ${bid.status === 'winning' ? 'bg-[var(--acid)]' : 'bg-[var(--hotpink)] text-white'}`}>
+                          {bid.status === 'winning' ? <CheckCircle2 className="h-4 w-4" /> : <BellRing className="h-4 w-4 animate-bounce" />}
+                          {bid.status}
+                        </div>
+                        {bid.status === 'outbid' && (
+                          <button className="rounded-xl border-[3px] border-[var(--ink)] bg-[var(--ink)] px-5 py-2 font-display text-sm font-black uppercase text-white shadow-[2px_2px_0_0_var(--electric)] transition-transform hover:-translate-y-0.5">
+                            Raise
+                          </button>
+                        )}
                       </div>
-                      <div className={`flex items-center gap-2 rounded-full border-[3px] border-[var(--ink)] px-4 py-2 font-display text-sm font-black uppercase shadow-[2px_2px_0_0_var(--ink)] ${bid.status === 'Winning' ? 'bg-[var(--acid)]' : 'bg-[var(--hotpink)] text-white'}`}>
-                        {bid.status === 'Winning' ? <CheckCircle2 className="h-4 w-4" /> : <BellRing className="h-4 w-4 animate-bounce" />}
-                        {bid.status}
-                      </div>
-                      {bid.status === 'Outbid' && (
-                        <button className="rounded-xl border-[3px] border-[var(--ink)] bg-[var(--ink)] px-5 py-2 font-display text-sm font-black uppercase text-white shadow-[2px_2px_0_0_var(--electric)] transition-transform hover:-translate-y-0.5">
-                          Raise
-                        </button>
-                      )}
-                    </div>
-                  </motion.div>
-                ))}
+                    </motion.div>
+                  ))
+                )}
               </div>
             </section>
 
             <section className="brutal-lg overflow-hidden bg-[var(--electric)] shadow-[6px_6px_0_0_var(--ink)]">
               <div className="flex items-center justify-between border-b-[4px] border-[var(--ink)] bg-[var(--ink)] px-6 py-5 text-white">
                 <h3 className="font-display text-2xl font-black flex items-center gap-3">
-                  <Bot className="h-6 w-6 text-[var(--acid)]" /> IntelliBot Activity
+                  <Activity className="h-6 w-6 text-[var(--acid)]" /> Recent Activity
                 </h3>
-                <Link href="/chatbot" className="rounded-full bg-white/20 px-4 py-1.5 font-display text-xs font-black uppercase hover:bg-white/30 transition-colors">
-                  Open Chat
-                </Link>
               </div>
               <div className="space-y-4 p-6 bg-[var(--background)]">
-                <div className="rounded-2xl border-[3px] border-[var(--ink)] bg-white p-5 shadow-[3px_3px_0_0_var(--ink)] relative overflow-hidden">
-                  <div className="absolute top-0 left-0 w-1 h-full bg-[var(--electric)]" />
-                  <div className="text-xs font-bold uppercase tracking-wider text-[var(--ink)]/60 mb-2">Today, 10:42 AM</div>
-                  <p className="font-medium text-lg"><strong className="font-display font-black text-[var(--electric)]">Agent:</strong> Auto-bid placed for <span className="font-bold bg-[var(--acid)] px-1 rounded border border-[var(--ink)]">$420</span> on Polaroid SX-70. You are the current top bidder.</p>
-                </div>
-                <div className="rounded-2xl border-[3px] border-[var(--ink)] bg-white p-5 shadow-[3px_3px_0_0_var(--ink)] relative overflow-hidden">
-                  <div className="absolute top-0 left-0 w-1 h-full bg-[var(--hotpink)]" />
-                  <div className="text-xs font-bold uppercase tracking-wider text-[var(--ink)]/60 mb-2">Yesterday, 4:15 PM</div>
-                  <p className="font-medium text-lg"><strong className="font-display font-black text-[var(--hotpink)]">Agent:</strong> Found 3 new vintage walkmans matching your criteria. <Link href="/ai-picks" className="underline decoration-2 underline-offset-4 font-black text-[var(--electric)] hover:text-[var(--hotpink)]">Review items</Link>.</p>
-                </div>
+                {activity?.length === 0 ? (
+                  <div className="text-center font-bold text-[var(--ink)]/60 py-4 uppercase">No recent activity</div>
+                ) : (
+                  activity?.map((item, i) => (
+                    <div key={item.id} className="rounded-2xl border-[3px] border-[var(--ink)] bg-white p-5 shadow-[3px_3px_0_0_var(--ink)] relative overflow-hidden">
+                      <div className={`absolute top-0 left-0 w-1 h-full ${item.type === 'won' ? 'bg-[var(--acid)]' : item.type === 'outbid' ? 'bg-[var(--hotpink)]' : 'bg-[var(--electric)]'}`} />
+                      <div className="text-xs font-bold uppercase tracking-wider text-[var(--ink)]/60 mb-2">{new Date(item.time).toLocaleString()}</div>
+                      <p className="font-medium text-lg">{item.message}</p>
+                    </div>
+                  ))
+                )}
               </div>
             </section>
 
@@ -214,34 +249,33 @@ export default function BuyerDashboardPage() {
               </div>
               
               <div className="space-y-6">
-                {tailoredPicks.map((pick, i) => (
-                  <Link href="/discover" key={i} className="block brutal overflow-hidden bg-white hover:-translate-y-1 transition-transform group shadow-[4px_4px_0_0_var(--ink)]">
-                    <div className="relative h-48 overflow-hidden border-b-[3px] border-[var(--ink)]">
-                      <img src={pick.image} alt={pick.item} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
-                      <div className="absolute left-3 top-3 rounded-full border-[3px] border-[var(--ink)] bg-white px-3 py-1 font-display text-xs font-black uppercase shadow-[2px_2px_0_0_var(--ink)]">
-                        {pick.tag}
-                      </div>
-                      <div className="absolute right-3 top-3 flex items-center justify-center h-8 w-8 rounded-full border-[3px] border-[var(--ink)] bg-[var(--acid)] shadow-[2px_2px_0_0_var(--ink)]">
-                        <ArrowUpRight className="h-4 w-4" strokeWidth={3} />
-                      </div>
-                    </div>
-                    <div className="p-5">
-                      <h4 className="font-display text-xl font-black leading-tight mb-4 group-hover:underline decoration-[3px] underline-offset-4">{pick.item}</h4>
-                      <div className="flex justify-between items-end border-t-[2px] border-dashed border-[var(--ink)]/30 pt-4">
-                        <div>
-                          <div className="text-xs uppercase font-bold tracking-widest text-[var(--ink)]/60">Current Bid</div>
-                          <div className="font-display text-2xl font-black text-[var(--hotpink)]">{pick.currentBid}</div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-xs uppercase font-bold tracking-widest text-[var(--ink)]/60">Est. Value</div>
-                          <div className="font-display text-lg font-black text-[var(--ink)]/80">{pick.estValue}</div>
+                {recommendations?.length === 0 ? (
+                  <div className="brutal bg-white p-6 text-center font-bold text-[var(--ink)]/60">
+                    No recommendations yet.
+                  </div>
+                ) : (
+                  recommendations?.map((pick, i) => (
+                    <Link href={`/auction/${pick.id}`} key={i} className="block brutal overflow-hidden bg-white hover:-translate-y-1 transition-transform group shadow-[4px_4px_0_0_var(--ink)]">
+                      <div className="relative h-48 overflow-hidden border-b-[3px] border-[var(--ink)]">
+                        <img src={pick.image} alt={pick.title} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                        <div className="absolute right-3 top-3 flex items-center justify-center h-8 w-8 rounded-full border-[3px] border-[var(--ink)] bg-[var(--acid)] shadow-[2px_2px_0_0_var(--ink)]">
+                          <ArrowUpRight className="h-4 w-4" strokeWidth={3} />
                         </div>
                       </div>
-                    </div>
-                  </Link>
-                ))}
+                      <div className="p-5">
+                        <h4 className="font-display text-xl font-black leading-tight mb-4 group-hover:underline decoration-[3px] underline-offset-4">{pick.title}</h4>
+                        <div className="flex justify-between items-end border-t-[2px] border-dashed border-[var(--ink)]/30 pt-4">
+                          <div>
+                            <div className="text-xs uppercase font-bold tracking-widest text-[var(--ink)]/60">Starting Bid</div>
+                            <div className="font-display text-2xl font-black text-[var(--hotpink)]">${pick.startingPrice?.toLocaleString() || 0}</div>
+                          </div>
+                        </div>
+                      </div>
+                    </Link>
+                  ))
+                )}
 
-                <Link href="/ai-picks" className="flex items-center justify-center gap-2 w-full rounded-2xl border-[3px] border-[var(--ink)] bg-[var(--background)] py-4 font-display text-sm font-black uppercase text-[var(--ink)] border-dashed hover:bg-white hover:border-solid hover:shadow-[4px_4px_0_0_var(--ink)] transition-all">
+                <Link href="/buyer/ai-picks" className="flex items-center justify-center gap-2 w-full rounded-2xl border-[3px] border-[var(--ink)] bg-[var(--background)] py-4 font-display text-sm font-black uppercase text-[var(--ink)] border-dashed hover:bg-white hover:border-solid hover:shadow-[4px_4px_0_0_var(--ink)] transition-all">
                   View More Picks <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>

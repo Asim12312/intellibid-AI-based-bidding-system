@@ -26,6 +26,7 @@ const userSchema = new mongoose.Schema({
     emailVerificationExpires: Date,
     resetPasswordToken: String,
     resetPasswordExpires: Date,
+    watchlist: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Auction' }],
 }, { timestamps: true });
 
 export default mongoose.model('User', userSchema);

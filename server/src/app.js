@@ -4,6 +4,7 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import { limiter } from './middleware/rateLimiter.js'
 import authRoutes from './modules/auth/auth.routes.js';
+import buyerRoutes from './modules/buyer/buyer.routes.js';
 import { errorHandler } from './middleware/error.middleware.js';
 
 const app = express();
@@ -22,6 +23,7 @@ app.use(cookieParser());
 
 // routes
 app.use('/api/auth', authRoutes);
+app.use('/api/buyer', buyerRoutes);
 
 // Error Handler
 app.use(errorHandler);
