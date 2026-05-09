@@ -3,7 +3,7 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 export const api = async (endpoint, options = {}) => {
     const res = await fetch(`${BASE_URL}${endpoint}`, {
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include', // REQUIRED: sends cookies with every request
+        credentials: 'include',
         ...options,
     });
     const data = await res.json();

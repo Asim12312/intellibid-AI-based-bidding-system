@@ -7,7 +7,7 @@ import {
   ShieldCheck, Wallet, BellRing, Search, Star, Check, Plus, Minus,
   Camera, Music, Watch, Palette, Shirt, Gem, Quote, PlayCircle,
 } from "lucide-react";
-import { BuyerSidebar } from "../layouts/BuyerSidebar";
+import { Sidebar } from "./Sidebar";
 import { MagneticButton } from "./MagneticButton";
 import { LiquidCursor } from "./LiquidCursor";
 
@@ -130,7 +130,7 @@ function Hero() {
 
           <Reveal delay={0.3}>
             <div className="mt-8 flex flex-wrap items-center gap-4">
-              <MagneticButton bg="var(--hotpink)" onClick={() => window.location.href='/login'}>
+              <MagneticButton bg="var(--hotpink)" onClick={() => window.location.href = '/login'}>
                 Start Bidding <ArrowUpRight className="h-5 w-5" strokeWidth={3} />
               </MagneticButton>
               <MagneticButton bg="white">
@@ -676,8 +676,8 @@ function CTA() {
             </h2>
             <p className="mt-6 max-w-xl text-white/80 md:text-lg">Join 120,000+ collectors and creators flipping the auction game.</p>
             <div className="mt-10 flex flex-wrap gap-4">
-              <MagneticButton bg="var(--acid)" onClick={() => window.location.href='/signup'}>Create free account</MagneticButton>
-              <MagneticButton bg="var(--hotpink)" onClick={() => window.location.href='/login'}>Browse auctions</MagneticButton>
+              <MagneticButton bg="var(--acid)" onClick={() => window.location.href = '/signup'}>Create free account</MagneticButton>
+              <MagneticButton bg="var(--hotpink)" onClick={() => window.location.href = '/login'}>Browse auctions</MagneticButton>
             </div>
           </div>
         </div>
@@ -749,7 +749,7 @@ export default function IntelliBidLanding() {
       <LiquidCursor />
       <TopBar />
       <div className="md:pl-24">
-        <BuyerSidebar />
+        <Sidebar />
         <Hero />
         <Marquee />
         <Categories />

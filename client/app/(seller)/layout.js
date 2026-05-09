@@ -1,6 +1,6 @@
 "use client";
 
-import { SellerSidebar } from "@/components/layouts/SellerSidebar";
+import SellerSidebar from "@/components/shared/(sidebar)/SellerSidebar";
 import { LiquidCursor } from "@/components/shared/LiquidCursor";
 
 export default function SellerLayout({ children }) {

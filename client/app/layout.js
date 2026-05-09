@@ -1,6 +1,7 @@
 import { Space_Grotesk, Inter } from "next/font/google";
 import "./globals.css";
 import GoogleProvider from "@/components/providers/GoogleProvider";
+import SellerSidebar from "@/components/shared/(sidebar)/SellerSidebar";
 
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-display",
