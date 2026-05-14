@@ -65,7 +65,6 @@ export default function LoginPage() {
       const roleRoutes = {
         buyer: "/buyer/dashboard",
         seller: "/seller/dashboard",
-        hybrid: "/hybrid/dashboard",
         admin: "/admin/dashboard",
       };
 

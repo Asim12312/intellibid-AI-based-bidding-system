@@ -223,11 +223,10 @@ export default function Signup() {
               <label className="font-display text-sm font-bold uppercase tracking-wide">
                 Account Type
               </label>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 {[
                   { id: "buyer", label: "Buyer", color: "var(--electric)" },
                   { id: "seller", label: "Seller", color: "var(--acid)" },
-                  { id: "hybrid", label: "Hybrid", color: "var(--hotpink)" },
                 ].map((type) => (
                   <label key={type.id} className="relative cursor-pointer">
                     {/* ✅ FIX 6: role radio wired to state */}

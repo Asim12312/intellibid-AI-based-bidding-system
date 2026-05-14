@@ -27,7 +27,7 @@ export function Sidebar({ role }) {
                 style={{ background: "color-mix(in oklab, white 72%, transparent)", backdropFilter: "blur(24px) saturate(180%)", WebkitBackdropFilter: "blur(24px) saturate(180%)", borderRight: "3px solid var(--ink)" }}
             >
                 <div className="flex h-16 w-full items-center gap-3 border-b-[3px] border-[var(--ink)] px-4">
-                    <Link href="/dashboard" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border-[3px] border-[var(--ink)] bg-[var(--ink)] font-display text-xl font-black text-white shadow-[3px_3px_0_0_var(--acid)] transition-all hover:-rotate-6 hover:shadow-[5px_5px_0_0_var(--acid)]">
+                    <Link href="/admin/dashboard" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border-[3px] border-[var(--ink)] bg-[var(--ink)] font-display text-xl font-black text-white shadow-[3px_3px_0_0_var(--acid)] transition-all hover:-rotate-6 hover:shadow-[5px_5px_0_0_var(--acid)]">
                         AD
                     </Link>
                     <AnimatePresence>
@@ -46,7 +46,7 @@ export function Sidebar({ role }) {
 
                 <nav className="flex flex-1 flex-col gap-1 overflow-y-hidden p-2 w-full">
                     {items.map((it) => {
-                        const isActive = pathname === it.href || (pathname && pathname.startsWith(it.href) && it.href !== '/dashboard');
+                        const isActive = pathname === it.href || (pathname && pathname.startsWith(it.href) && it.href !== '/admin/dashboard');
                         return (
                             <Link key={it.label} href={it.href}>
                                 <motion.div

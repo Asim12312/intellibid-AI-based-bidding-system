@@ -6,6 +6,8 @@ import { limiter } from './middleware/rateLimiter.js'
 import authRoutes from './modules/auth/auth.routes.js';
 import buyerRoutes from './modules/buyer/buyer.routes.js';
 import sellerRoutes from './modules/seller/seller.routes.js';
+import adminRoutes from './modules/admin/admin.routes.js';
+
 import { errorHandler } from './middleware/error.middleware.js';
 
 const app = express();
@@ -26,6 +28,8 @@ app.use(cookieParser());
 app.use('/api/auth', authRoutes);
 app.use('/api/buyer', buyerRoutes);
 app.use('/api/seller', sellerRoutes);
+app.use('/api/admin', adminRoutes);
+
 
 // Error Handler
 app.use(errorHandler);
