@@ -1,20 +1,33 @@
 import { asyncHandler } from '../../utils/asyncHandler.js';
 import {
     getBuyerStatsService,
-    getActiveBidsService,
+    getMyBidsService,
+    placeBidService,
     getRecommendationsService,
     getRecentActivityService
 } from './buyer.service.js';
 
 export const getBuyerStats = asyncHandler(async (req, res) => {
-    // req.user.id will be available via auth middleware
+
     const stats = await getBuyerStatsService(req.user.id);
     res.status(200).json({ success: true, data: stats });
 });
 
-export const getActiveBids = asyncHandler(async (req, res) => {
-    const bids = await getActiveBidsService(req.user.id);
-    res.status(200).json({ success: true, data: bids });
+export const getMyBids = asyncHandler(async (req, res) => {
+    const { tab, page, limit } = req.query;
+    const result = await getMyBidsService(req.user.id, tab, page, limit);
+    res.status(200).json({ success: true, ...result });
+});
+
+export const placeBid = asyncHandler(async (req, res) => {
+    const { auctionId, bidAmount } = req.body;
+
+    if (!auctionId || !bidAmount) {
+        return res.status(400).json({ success: false, message: 'auctionId and bidAmount are required' });
+    }
+
+    const result = await placeBidService(req.user.id, auctionId, Number(bidAmount));
+    res.status(201).json({ success: true, ...result });
 });
 
 export const getRecommendations = asyncHandler(async (req, res) => {

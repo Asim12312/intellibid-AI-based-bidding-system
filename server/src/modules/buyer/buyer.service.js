@@ -1,7 +1,8 @@
 import Product from '../../models/product.model.js';
 import Bid from '../../models/bid.model.js';
 import User from '../../models/user.model.js';
-
+import Auction from '../../models/auction.model.js';
+import { trackEventService } from '../events/events.service.js';
 export const getBuyerStatsService = async (userId) => {
     // 1. Active Bids Count
     const activeBidsCount = await Bid.countDocuments({
@@ -35,26 +36,88 @@ export const getBuyerStatsService = async (userId) => {
     };
 };
 
-export const getActiveBidsService = async (userId) => {
-    // Fetch user's active bids and populate product details
-    const bids = await Bid.find({ 
-        bidder: userId,
-        status: { $in: ['winning', 'outbid'] }
-    })
-    .populate('product', 'name startingPrice mainImage endingDate')
-    .sort({ updatedAt: -1 })
-    .lean();
+export const getMyBidsService = async (userId, tab = 'active', page = 1, limit = 12) => {
+    let query = { bidder: userId };
 
-    // Map to a cleaner format for the frontend
-    return bids.map(bid => ({
-        id: bid._id,
-        title: bid.product?.name,
-        currentBid: bid.product?.startingPrice, // In a real app we'd fetch the highest bid or currentPrice if added to product model
-        userBid: bid.amount,
-        status: bid.status,
-        endTime: bid.product?.endingDate,
-        image: bid.product?.mainImage || 'https://via.placeholder.com/200'
-    }));
+    if (tab === 'active') {
+        query.status = { $in: ['winning', 'outbid'] };
+    } else if (tab === 'won') {
+        query.status = 'won';
+    } else if (tab === 'lost') {
+        query.status = 'outbid';
+        // Needs a join/populate to check if auction is ended, but for now we filter post-query or assume outbid is lost if auction ended.
+        // A better approach is to query auctions that are ended where user bid and didn't win.
+    }
+
+    const skip = (page - 1) * limit;
+
+    const bids = await Bid.find(query)
+        .populate('auction', 'title images endTime currentPrice status bidCount')
+        .sort({ updatedAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean();
+
+    // If tab === 'lost', filter out active auctions
+    let filteredBids = bids;
+    if (tab === 'lost') {
+        filteredBids = bids.filter(b => b.auction && b.auction.status !== 'active');
+    } else if (tab === 'active') {
+        filteredBids = bids.filter(b => b.auction && b.auction.status === 'active');
+    }
+
+    const total = await Bid.countDocuments(query); // Rough count, inaccurate for lost due to post-filter
+
+    return {
+        bids: filteredBids,
+        total,
+        page: Number(page),
+        hasMore: skip + bids.length < total
+    };
+};
+
+export const placeBidService = async (userId, auctionId, bidAmount) => {
+    const auction = await Auction.findById(auctionId);
+    
+    if (!auction) throw new Error('Auction not found');
+    if (auction.status !== 'active') throw new Error('Auction is not active');
+    if (new Date(auction.endTime) < new Date()) throw new Error('Auction has ended');
+    if (auction.seller.toString() === userId.toString()) throw new Error('You cannot bid on your own auction');
+    if (bidAmount <= auction.currentPrice) throw new Error(`Bid must be greater than current price of $${auction.currentPrice}`);
+
+    // Check if user is already highest bidder
+    const highestBid = await Bid.findOne({ auction: auctionId, status: 'winning' });
+    if (highestBid && highestBid.bidder.toString() === userId.toString()) {
+        throw new Error('You are already the highest bidder');
+    }
+
+    // Atomic-ish update: Mark old winning bids as outbid
+    await Bid.updateMany(
+        { auction: auctionId, status: 'winning' },
+        { $set: { status: 'outbid' } }
+    );
+
+    // Create new bid
+    const newBid = await Bid.create({
+        auction: auctionId,
+        bidder: userId,
+        amount: bidAmount,
+        status: 'winning'
+    });
+
+    // Update auction price and bid count
+    auction.currentPrice = bidAmount;
+    auction.bidCount += 1;
+    await auction.save();
+
+    // Fire tracking event (fire and forget)
+    trackEventService(userId, { 
+        auctionId, 
+        eventType: 'bid_placed', 
+        metadata: { bidAmount } 
+    }).catch(err => console.error('Failed to track bid event', err));
+
+    return { bid: newBid, newCurrentPrice: bidAmount };
 };
 
 export const getRecommendationsService = async (userId) => {
