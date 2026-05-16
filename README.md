@@ -59,3 +59,6 @@ Copy `server/.env.example` to `server/.env` and update the variables with your a
 - **Unified Styling**: Tailwind CSS 4 and OKLCH color palettes provide a consistent Neo-Brutalism aesthetic.
 - **Scalable API**: The server follows a modular architecture where each feature (auth, user, product, etc.) is encapsulated in its own module.
 - **Shared Logic**: Validation schemas and constants are shared between the client and server to ensure consistency.
+
+## Behaviour based feed architecyure
+User Actions → Event Tracker → Behavior Store → Scoring Engine → Feed API → Frontend

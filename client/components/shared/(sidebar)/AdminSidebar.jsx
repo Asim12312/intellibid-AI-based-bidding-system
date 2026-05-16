@@ -11,6 +11,7 @@ const items = [
     { emoji: "📊", label: "Dashboard", color: "var(--electric)", textColor: "#fff", href: "/admin/dashboard" },
     { emoji: "👥", label: "Users", color: "var(--acid)", textColor: "var(--ink)", href: "/admin/users" },
     { emoji: "📑", label: "Reports", color: "var(--sunset)", textColor: "#fff", href: "/admin/reports" },
+    { emoji: "👤", label: "Profile", color: "var(--acid)", textColor: "var(--ink)", href: "/profile" },
 ];
 
 export default function Sidebar({ role }) {
