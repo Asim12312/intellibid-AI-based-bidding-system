@@ -17,15 +17,6 @@ intellibid-fyp/
 └── package.json     # Workspace configuration for monorepo
 ```
 
-## Admin dashboard
-
-Staff operators use the admin panel at `/admin/dashboard` after signing in on `/login`.
-
-- **Setup & architecture:** [docs/admin/README.md](./docs/admin/README.md)
-- **Beginner teaching guide:** [docs/admin/TEACHING_GUIDE.md](./docs/admin/TEACHING_GUIDE.md)
-- **Seed staff account:** `npm run seed:admin` (default `admin@intellibid.com` / `Admin@12345`)
-- **Client env:** copy `client/.env.example` → `client/.env.local` and set `NEXT_PUBLIC_API_URL=http://localhost:5000`
-
 ## Getting Started
 
 ### Prerequisites

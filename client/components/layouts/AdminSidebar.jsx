@@ -4,16 +4,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus } from "lucide-react";
 
 const items = [
   { emoji: "📊", label: "Dashboard", color: "var(--electric)", textColor: "#fff", href: "/admin/dashboard" },
   { emoji: "👥", label: "Users", color: "var(--acid)", textColor: "var(--ink)", href: "/admin/users" },
-  { emoji: "💬", label: "Complaints", color: "var(--hotpink)", textColor: "#fff", href: "/admin/complaints" },
-  { emoji: "🔨", label: "Monitoring", color: "var(--sunset)", textColor: "#fff", href: "/admin/monitoring" },
+  { emoji: "📑", label: "Reports", color: "var(--sunset)", textColor: "#fff", href: "/admin/reports" },
 ];
 
-export function AdminSidebar({ onNewAuction }) {
+export function AdminSidebar() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
 
@@ -25,18 +23,10 @@ export function AdminSidebar({ onNewAuction }) {
         className={`fixed left-0 top-0 z-50 hidden h-full flex-col items-start md:flex transition-[width] duration-300 ease-out ${
           open ? "w-64" : "w-20"
         }`}
-        style={{
-          background: "color-mix(in oklab, white 72%, transparent)",
-          backdropFilter: "blur(24px) saturate(180%)",
-          WebkitBackdropFilter: "blur(24px) saturate(180%)",
-          borderRight: "3px solid var(--ink)",
-        }}
+        style={{ background: "color-mix(in oklab, white 72%, transparent)", backdropFilter: "blur(24px) saturate(180%)", WebkitBackdropFilter: "blur(24px) saturate(180%)", borderRight: "3px solid var(--ink)" }}
       >
         <div className="flex h-20 w-full items-center gap-3 border-b-[3px] border-[var(--ink)] px-4">
-          <Link
-            href="/admin/dashboard"
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border-[3px] border-[var(--ink)] bg-[var(--ink)] font-display text-xl font-black text-white shadow-[3px_3px_0_0_var(--acid)] transition-all hover:-rotate-6 hover:shadow-[5px_5px_0_0_var(--acid)]"
-          >
+          <Link href="/dashboard" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border-[3px] border-[var(--ink)] bg-[var(--ink)] font-display text-xl font-black text-white shadow-[3px_3px_0_0_var(--acid)] transition-all hover:-rotate-6 hover:shadow-[5px_5px_0_0_var(--acid)]">
             AD
           </Link>
           <AnimatePresence>
@@ -54,19 +44,8 @@ export function AdminSidebar({ onNewAuction }) {
         </div>
 
         <nav className="flex flex-1 flex-col gap-2 overflow-y-auto p-3 w-full">
-          {onNewAuction && (
-            <button
-              type="button"
-              onClick={onNewAuction}
-              className="mb-2 flex w-full items-center justify-center gap-2 rounded-2xl border-[3px] border-[var(--ink)] bg-[var(--hotpink)] px-3 py-3 font-display text-xs font-black uppercase text-white shadow-[3px_3px_0_0_var(--ink)] transition-all hover:-translate-y-0.5 hover:shadow-[5px_5px_0_0_var(--ink)]"
-            >
-              <Plus className="h-4 w-4" />
-              {open && <span>New Auction</span>}
-            </button>
-          )}
-
           {items.map((it) => {
-            const isActive = pathname === it.href || pathname?.startsWith(`${it.href}/`);
+            const isActive = pathname === it.href || (pathname && pathname.startsWith(it.href) && it.href !== '/dashboard');
             return (
               <Link key={it.label} href={it.href}>
                 <motion.div
@@ -75,10 +54,7 @@ export function AdminSidebar({ onNewAuction }) {
                   className={`group flex items-center gap-3 rounded-2xl px-2 py-2 transition-all ${
                     isActive ? "shadow-[4px_4px_0_0_var(--ink)]" : "hover:shadow-[3px_3px_0_0_var(--ink)]"
                   }`}
-                  style={{
-                    background: isActive ? it.color : "transparent",
-                    border: isActive ? "3px solid var(--ink)" : "3px solid transparent",
-                  }}
+                  style={{ background: isActive ? it.color : "transparent", border: isActive ? "3px solid var(--ink)" : "3px solid transparent" }}
                 >
                   <span
                     className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border-[3px] border-[var(--ink)] text-2xl shadow-[2px_2px_0_0_var(--ink)] transition-all group-hover:shadow-[4px_4px_0_0_var(--ink)] group-hover:-translate-y-0.5"
@@ -104,35 +80,14 @@ export function AdminSidebar({ onNewAuction }) {
             );
           })}
         </nav>
-
-        <div className="w-full border-t-[3px] border-[var(--ink)] p-3">
-          <Link
-            href="/"
-            className="block rounded-xl border-[3px] border-[var(--ink)] bg-white px-3 py-2 text-center font-display text-xs font-black uppercase shadow-[2px_2px_0_0_var(--ink)] hover:shadow-[4px_4px_0_0_var(--ink)]"
-          >
-            {open ? "← Main site" : "←"}
-          </Link>
-        </div>
       </aside>
 
+      {/* Mobile nav */}
       <nav className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 md:hidden">
-        <div
-          className="flex items-center gap-2 rounded-full p-2 shadow-[var(--shadow-brutal)]"
-          style={{
-            background: "color-mix(in oklab, white 80%, transparent)",
-            backdropFilter: "blur(20px)",
-            border: "3px solid var(--ink)",
-          }}
-        >
+        <div className="flex items-center gap-2 rounded-full p-2 shadow-[var(--shadow-brutal)]" style={{ background: "color-mix(in oklab, white 80%, transparent)", backdropFilter: "blur(20px)", border: "3px solid var(--ink)" }}>
           {items.map((it) => (
             <Link key={it.label} href={it.href}>
-              <motion.span
-                whileTap={{ scale: 0.85, rotate: -10 }}
-                whileHover={{ y: -4 }}
-                className="flex h-12 w-12 items-center justify-center rounded-full border-[3px] border-[var(--ink)] text-xl shadow-[2px_2px_0_0_var(--ink)] transition-all"
-                style={{ background: it.color }}
-                title={it.label}
-              >
+              <motion.span whileTap={{ scale: 0.85, rotate: -10 }} whileHover={{ y: -4 }} className="flex h-12 w-12 items-center justify-center rounded-full border-[3px] border-[var(--ink)] text-xl shadow-[2px_2px_0_0_var(--ink)] transition-all" style={{ background: it.color }} title={it.label}>
                 {it.emoji}
               </motion.span>
             </Link>
@@ -142,4 +97,3 @@ export function AdminSidebar({ onNewAuction }) {
     </>
   );
 }
-

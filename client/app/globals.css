@@ -96,9 +96,7 @@
     border: 3px solid var(--ink); 
     box-shadow: var(--shadow-brutal); 
     border-radius: var(--radius); 
-  }
-  .brutal-surface {
-    background: var(--card);
+    background: var(--card); 
   }
   .brutal-lg { 
     border: 4px solid var(--ink); 
