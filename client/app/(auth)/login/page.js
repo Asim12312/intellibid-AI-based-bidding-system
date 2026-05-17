@@ -63,7 +63,7 @@ export default function LoginPage() {
       setUser(data.user);
 
       const roleRoutes = {
-        buyer: "/buyer/dashboard",
+        buyer: "/dashboard",
         seller: "/seller/dashboard",
         admin: "/admin/dashboard",
       };
@@ -85,7 +85,14 @@ export default function LoginPage() {
       });
 
       setUser(data.user);
-      router.push("/dashboard");
+      
+      const roleRoutes = {
+        buyer: "/dashboard",
+        seller: "/seller/dashboard",
+        admin: "/admin/dashboard",
+      };
+
+      router.push(roleRoutes[data.user.role] || "/dashboard");
     } catch (err) {
       setError(err.message || "Google login failed");
     } finally {

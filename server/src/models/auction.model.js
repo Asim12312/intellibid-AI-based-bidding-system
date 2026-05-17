@@ -16,7 +16,9 @@ const auctionSchema = new mongoose.Schema({
         enum: ['draft', 'active', 'ended', 'cancelled'], 
         default: 'active' 
     },
-    bidCount: { type: Number, default: 0 }
+    bidCount: { type: Number, default: 0 },
+    viewCount: { type: Number, default: 0 },
+    tags: [{ type: String, trim: true }]
 }, { timestamps: true });
 
 // Index for faster queries

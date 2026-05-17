@@ -7,7 +7,6 @@ import {
   ShieldCheck, Wallet, BellRing, Search, Star, Check, Plus, Minus,
   Camera, Music, Watch, Palette, Shirt, Gem, Quote, PlayCircle,
 } from "lucide-react";
-import { Sidebar } from "./Sidebar";
 import { MagneticButton } from "./MagneticButton";
 import { LiquidCursor } from "./LiquidCursor";
 
@@ -748,8 +747,7 @@ export default function IntelliBidLanding() {
       <ScrollProgress />
       <LiquidCursor />
       <TopBar />
-      <div className="md:pl-24">
-        <Sidebar />
+      <div>
         <Hero />
         <Marquee />
         <Categories />

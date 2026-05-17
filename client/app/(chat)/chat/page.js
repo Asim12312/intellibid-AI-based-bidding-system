@@ -66,7 +66,7 @@ export default function ChatPage() {
                             </div>
                             <h2 className="font-display text-2xl font-black uppercase tracking-widest text-[var(--ink)] mb-2">
                                 Select a conversation
-                            </h2>
+                              </h2>
                             <p className="font-medium opacity-50 max-w-sm">
                                 Choose a thread from the sidebar to start messaging, or consult BidMind AI for auction intelligence.
                             </p>

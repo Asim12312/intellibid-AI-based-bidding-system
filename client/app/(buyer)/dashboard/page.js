@@ -27,7 +27,7 @@ export default function BuyerDashboardPage() {
         const [statsRes, bidsRes, recsRes, actRes] = await Promise.all([
           api('/api/buyer/dashboard/stats'),
           api('/api/buyer/bids/active'),
-          api('/api/buyer/recommendations'),
+          api('/api/buyer/ai-picks'),
           api('/api/buyer/activity')
         ]);
 

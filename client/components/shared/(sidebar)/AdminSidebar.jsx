@@ -81,6 +81,38 @@ export default function Sidebar({ role }) {
                         );
                     })}
                 </nav>
+
+                {/* Bottom area for Signout */}
+                <div className="w-full p-2 mt-auto border-t-[3px] border-[var(--ink)]">
+                    <button
+                        onClick={async () => {
+                            try {
+                                const { api } = await import("@/lib/api");
+                                await api('/api/auth/logout', { method: 'POST' });
+                            } catch (e) {}
+                            const { useAuthStore } = await import("@/store/authStore");
+                            useAuthStore.getState().clearUser();
+                            window.location.href = '/';
+                        }}
+                        className="group flex w-full items-center gap-3 rounded-2xl px-2 py-2 border-[3px] border-transparent transition-all hover:bg-[var(--hotpink)] hover:text-white hover:border-[var(--ink)] hover:shadow-[3px_3px_0_0_var(--ink)] active:scale-95"
+                    >
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-[3px] border-[var(--ink)] bg-white text-xl shadow-[2px_2px_0_0_var(--ink)] transition-all group-hover:shadow-[4px_4px_0_0_var(--ink)] group-hover:-translate-y-0.5">
+                            🚪
+                        </span>
+                        <AnimatePresence>
+                            {open && (
+                                <motion.span
+                                    initial={{ opacity: 0, x: -6 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: -6 }}
+                                    className="whitespace-nowrap font-display text-sm font-black uppercase tracking-wide text-inherit"
+                                >
+                                    Sign Out
+                                </motion.span>
+                            )}
+                        </AnimatePresence>
+                    </button>
+                </div>
             </aside>
 
             {/* Mobile nav */}

@@ -22,9 +22,8 @@ export const getAdminStatsService = async () => {
 
     // 4. Moderation Reports (Mock for now until Report model exists)
     const pendingReports = await Product.countDocuments({
-        // Placeholder for future flagged status
-        // flagged: true
-    }) || 0; // Returning 0 since we haven't implemented flagged yet
+
+    }) || 0;
 
     return {
         totalUsers,
@@ -60,10 +59,10 @@ export const getModerationQueueService = async () => {
             { startingPrice: { $gt: 10000 } } // Example threshold for manual review
         ]
     })
-    .populate('seller', 'firstName lastName email')
-    .sort({ createdAt: -1 })
-    .limit(5)
-    .lean();
+        .populate('seller', 'firstName lastName email')
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .lean();
 
     return flaggedItems.map(item => ({
         id: item._id,

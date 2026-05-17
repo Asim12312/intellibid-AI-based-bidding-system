@@ -39,3 +39,9 @@ export const getRecentActivity = asyncHandler(async (req, res) => {
     const activity = await getRecentActivityService(req.user.id);
     res.status(200).json({ success: true, data: activity });
 });
+
+export const getAiPicks = asyncHandler(async (req, res) => {
+    const { getAiPicksService } = await import('./aiPicks.service.js');
+    const picks = await getAiPicksService(req.user.id);
+    res.status(200).json({ success: true, data: picks });
+});

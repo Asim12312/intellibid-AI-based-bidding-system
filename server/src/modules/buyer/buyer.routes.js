@@ -5,7 +5,8 @@ import {
     getMyBids,
     placeBid,
     getRecommendations,
-    getRecentActivity
+    getRecentActivity,
+    getAiPicks
 } from './buyer.controller.js';
 
 const router = express.Router();
@@ -15,9 +16,10 @@ router.use(auth);
 
 // Dashboard routes
 router.get('/dashboard/stats', getBuyerStats);
-router.get('/bids', getMyBids);
+router.get('/bids/:tab?', getMyBids);
 router.post('/bids/place', placeBid);
 router.get('/recommendations', getRecommendations);
 router.get('/activity', getRecentActivity);
+router.get('/ai-picks', getAiPicks);
 
 export default router;
