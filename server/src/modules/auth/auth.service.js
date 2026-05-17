@@ -2,6 +2,9 @@ import bcrypt from 'bcryptjs';
 import User from '../../models/user.model.js';
 import { generateToken, generateVerificationToken } from '../../services/token.service.js';
 import { sendVerificationEmail } from '../../services/email.service.js';
+import { syncPlatformUserFromAuthUser } from '../../services/platformUser.service.js';
+import { login as adminStaffLogin } from '../../admin/services/auth.service.js';
+import { Admin } from '../../admin/models/Admin.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { OAuth2Client } from 'google-auth-library';
 
@@ -37,36 +40,83 @@ export const signupService = async (data) => {
         console.error("Failed to send verification email:", error.message);
     }
 
-    // Generate JWT
+    await syncPlatformUserFromAuthUser(user);
+
     const token = generateToken(user);
 
     return { token, user: { id: user._id, email: user.email, role: user.role } };
 };
 
+async function loginAsStaffAdmin(email, password) {
+    const adminSession = await adminStaffLogin(email, password);
+    const token = generateToken({
+        _id: adminSession.admin.id,
+        email: adminSession.admin.email,
+        role: 'admin',
+    });
+
+    return {
+        token,
+        user: {
+            id: adminSession.admin.id,
+            email: adminSession.admin.email,
+            role: 'admin',
+            name: adminSession.admin.name,
+        },
+        adminTokens: {
+            accessToken: adminSession.accessToken,
+            refreshToken: adminSession.refreshToken,
+        },
+    };
+}
+
 export const loginService = async (data) => {
-    // Find user
-    const user = await User.findOne({ email: data.email });
-    if (!user) {
-        console.log(`Login failed: User not found for email ${data.email}`);
+    const email = data.email.trim().toLowerCase();
+    const { password } = data;
+
+    const staffAdmin = await Admin.findOne({ email, isActive: true }).select('+passwordHash');
+    if (staffAdmin) {
+        const staffPasswordValid = await staffAdmin.comparePassword(password);
+        if (staffPasswordValid) {
+            return loginAsStaffAdmin(email, password);
+        }
+    }
+
+    const user = await User.findOne({ email });
+
+    if (user) {
+        if (!user.isVerified) {
+            throw new ApiError(401, 'Please verify your email before logging in');
+        }
+
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+            throw new ApiError(401, 'Invalid email or password');
+        }
+
+        await syncPlatformUserFromAuthUser(user);
+        const token = generateToken(user);
+
+        return {
+            token,
+            user: {
+                id: user._id,
+                email: user.email,
+                role: user.role,
+                name: [user.firstName, user.lastName].filter(Boolean).join(' ').trim(),
+            },
+        };
+    }
+
+    if (staffAdmin) {
         throw new ApiError(401, 'Invalid email or password');
     }
 
-    // Check verification
-    if (!user.isVerified) {
-        throw new ApiError(401, 'Please verify your email before logging in');
-    }
-
-    // Compare password
-    const isMatch = await bcrypt.compare(data.password, user.password);
-    if (!isMatch) {
-        console.log(`Login failed: Password mismatch for user ${data.email}`);
+    try {
+        return await loginAsStaffAdmin(email, password);
+    } catch {
         throw new ApiError(401, 'Invalid email or password');
     }
-
-    // Generate JWT
-    const token = generateToken(user);
-
-    return { token, user: { id: user._id, email: user.email, role: user.role } };
 };
 
 export const verifyEmailService = async (token) => {
@@ -83,6 +133,31 @@ export const verifyEmailService = async (token) => {
     await user.save();
 
     return { message: 'Email verified successfully' };
+};
+
+export const getStaffAdminMe = async (adminId) => {
+    const admin = await Admin.findById(adminId);
+    if (!admin || !admin.isActive) return null;
+    return {
+        id: admin._id,
+        email: admin.email,
+        role: 'admin',
+        name: admin.name,
+        isVerified: true,
+    };
+};
+
+export const getMeService = async (userId) => {
+    const user = await User.findById(userId).select('-password -emailVerificationToken -emailVerificationExpires');
+    if (!user) throw new ApiError(401, 'User not found');
+    return {
+        id: user._id,
+        email: user.email,
+        role: user.role,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        isVerified: user.isVerified,
+    };
 };
 
 export const googleLoginService = async (idToken) => {
@@ -107,6 +182,7 @@ export const googleLoginService = async (idToken) => {
         });
     }
 
+    await syncPlatformUserFromAuthUser(user);
     const token = generateToken(user);
     return { token, user: { id: user._id, email: user.email, role: user.role } };
 };
