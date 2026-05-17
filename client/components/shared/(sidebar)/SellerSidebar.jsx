@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 const items = [
     { emoji: "📊", label: "Dashboard", color: "var(--acid)", textColor: "var(--ink)", href: "/seller/dashboard" },
     { emoji: "📦", label: "My Products", color: "var(--electric)", textColor: "#fff", href: "/seller/products" },
-    { emoji: "➕", label: "Create Listing", color: "var(--hotpink)", textColor: "#fff", href: "/seller/products/create" },
+    { emoji: "➕", label: "Create Listing", color: "var(--hotpink)", textColor: "#fff", href: "/seller/listings/create" },
     { emoji: "💬", label: "Messages", color: "var(--sunset)", textColor: "#fff", href: "/chat" },
     { emoji: "👤", label: "Profile", color: "var(--acid)", textColor: "var(--ink)", href: "/profile" },
 ];

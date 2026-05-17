@@ -6,6 +6,14 @@ import {
     getSellerActivity,
     getSellerInsights
 } from './seller.controller.js';
+import {
+    createListing,
+    aiEnhanceListing,
+    getMyListings,
+    updateListing,
+    deleteListing,
+} from '../listing/listing.controller.js';
+import { uploadAuctionImages } from '../../config/cloudinary.js';
 
 const router = express.Router();
 
@@ -17,5 +25,12 @@ router.get('/dashboard/stats', getSellerStats);
 router.get('/listings/active', getActiveListings);
 router.get('/activity/recent', getSellerActivity);
 router.get('/insights/ai', getSellerInsights);
+
+// Listing CRUD
+router.post('/listings', uploadAuctionImages.array('images', 6), createListing);
+router.post('/listings/ai-enhance', aiEnhanceListing);
+router.get('/listings', getMyListings);
+router.put('/listings/:id', updateListing);
+router.delete('/listings/:id', deleteListing);
 
 export default router;
