@@ -10,6 +10,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import { api } from "@/lib/api";
+import { setTokens } from "@/components/admin/lib/api";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -51,20 +52,32 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
+      const payload = {
+        email: form.email.trim().toLowerCase(),
+        password: form.password,
+      };
+
       const data = await api("/api/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
 
       setUser(data.user);
 
+      if (data.adminTokens?.accessToken && data.adminTokens?.refreshToken) {
+        setTokens(data.adminTokens.accessToken, data.adminTokens.refreshToken);
+      } else if (data.user?.role === 'admin') {
+        setError('Admin session tokens missing. Run npm run seed:admin and sign in again.');
+        return;
+      }
+
       const roleRoutes = {
-        buyer: "/buyer/dashboard",
+        buyer: "/dashboard",
         seller: "/seller/dashboard",
-        hybrid: "/hybrid/dashboard",
+        hybrid: "/dashboard",
         admin: "/admin/dashboard",
       };
 
@@ -85,7 +98,13 @@ export default function LoginPage() {
       });
 
       setUser(data.user);
-      router.push("/dashboard");
+      const roleRoutes = {
+        buyer: "/dashboard",
+        seller: "/seller/dashboard",
+        hybrid: "/dashboard",
+        admin: "/admin/dashboard",
+      };
+      router.push(roleRoutes[data.user.role] || "/dashboard");
     } catch (err) {
       setError(err.message || "Google login failed");
     } finally {
