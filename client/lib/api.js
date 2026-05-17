@@ -13,7 +13,16 @@ export const api = async (endpoint, options = {}) => {
         ...options,
         headers,
     });
-    const data = await res.json();
+
+    let data;
+    const text = await res.text();
+    try {
+        data = JSON.parse(text);
+    } catch (err) {
+        console.error(`[API Error] Failed to parse JSON from ${endpoint}. Body:`, text);
+        throw new Error('Invalid server response');
+    }
+
     if (!res.ok) throw new Error(data.message || 'Request failed');
     return data;
 }

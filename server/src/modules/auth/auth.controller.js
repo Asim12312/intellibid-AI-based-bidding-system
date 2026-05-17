@@ -69,3 +69,16 @@ export const resetPassword = asyncHandler(async (req, res) => {
     const result = await resetPasswordService(token, password);
     res.status(200).json({ success: true, ...result });
 });
+
+export const getMe = asyncHandler(async (req, res) => {
+    res.status(200).json({
+        success: true,
+        user: {
+            id: req.user._id,
+            email: req.user.email,
+            role: req.user.role,
+            firstName: req.user.firstName,
+            lastName: req.user.lastName,
+        },
+    });
+});

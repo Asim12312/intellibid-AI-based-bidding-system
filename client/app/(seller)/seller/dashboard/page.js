@@ -66,7 +66,7 @@ export default function SellerDashboard() {
             Seller Hub
           </h1>
           <p className="font-medium opacity-70">
-            Welcome back, {user?.firstName || 'Seller'}. Here's your business at a glance.
+            Welcome back, {(user?.lastName && user.lastName.length <= 12) ? user.lastName : 'Seller'}. Here's your business at a glance.
           </p>
         </div>
       </motion.div>

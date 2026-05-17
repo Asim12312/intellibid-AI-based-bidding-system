@@ -85,7 +85,7 @@ export default function BuyerDashboardPage() {
         <div className="grid gap-6 md:grid-cols-4 lg:gap-8">
           <div className="brutal-lg col-span-1 flex flex-col justify-between bg-[var(--ink)] p-8 text-white md:col-span-2 shadow-[8px_8px_0_0_var(--acid)]">
             <div>
-              <h2 className="font-display text-4xl font-black md:text-5xl">Welcome back, <span className="text-[var(--acid)]">{user?.firstName || 'Buyer'}.</span></h2>
+              <h2 className="font-display text-4xl font-black md:text-5xl">Welcome back, <span className="text-[var(--acid)]">{(user?.lastName && user.lastName.length <= 12) ? user.lastName : 'Buyer'}.</span></h2>
               <p className="mt-3 text-lg text-white/80 font-medium">You have {stats?.activeBids || 0} active bids closing soon. The market is hot.</p>
             </div>
             <div className="mt-8 flex gap-4">

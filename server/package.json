@@ -8,6 +8,7 @@
     "dev": "nodemon src/server.js"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "bcryptjs": "^2.4.3",
     "cloudinary": "^1.41.3",
     "cookie-parser": "^1.4.7",
@@ -24,6 +25,7 @@
     "multer-storage-cloudinary": "^4.0.0",
     "node-cron": "^4.2.1",
     "nodemailer": "^8.0.7",
+    "socket.io": "^4.8.3",
     "zod": "^3.25.76"
   },
   "devDependencies": {

@@ -10,6 +10,7 @@ import adminRoutes from './modules/admin/admin.routes.js';
 import profileRoutes from './modules/profile/profile.routes.js';
 import feedRoutes from './modules/feed/feed.routes.js';
 import eventsRoutes from './modules/events/events.routes.js';
+import messagesRoutes from './modules/messages/messages.routes.js';
 
 import { errorHandler } from './middleware/error.middleware.js';
 
@@ -36,6 +37,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/feed', feedRoutes);
 app.use('/api/events', eventsRoutes);
+app.use('/api/messages', messagesRoutes);
 
 
 // Error Handler

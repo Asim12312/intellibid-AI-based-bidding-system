@@ -1,9 +1,10 @@
 import express from 'express';
-import { signup, login, logout, verifyEmail, googleLogin, forgotPassword, resetPassword } from './auth.controller.js';
+import { signup, login, logout, verifyEmail, googleLogin, forgotPassword, resetPassword, getMe } from './auth.controller.js';
 import { auth } from '../../middleware/auth.middleware.js';
 
 const router = express.Router();
 
+router.get('/me', auth, getMe);
 router.post('/signup', signup);
 router.post('/login', login);
 router.post('/logout', auth, logout);
