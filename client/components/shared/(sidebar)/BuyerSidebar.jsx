@@ -82,21 +82,25 @@ export default function BuyerSidebar() {
                     })}
                 </nav>
 
-                {/* Bottom area for Signout */}
-                <div className="w-full p-2 mt-auto border-t-[3px] border-[var(--ink)]">
+                {/* Bottom area for Actions */}
+                <div className="w-full p-2 mt-auto border-t-[3px] border-[var(--ink)] flex flex-col gap-1">
+
+                    {/* Seller Activation / Switch Role */}
+                    <RoleSwitchButton open={open} />
+
                     <button
                         onClick={async () => {
                             try {
                                 const { api } = await import("@/lib/api");
                                 await api('/api/auth/logout', { method: 'POST' });
-                            } catch (e) {}
+                            } catch (e) { }
                             const { useAuthStore } = await import("@/store/authStore");
                             useAuthStore.getState().clearUser();
                             window.location.href = '/';
                         }}
                         className="group flex w-full items-center gap-3 rounded-2xl px-2 py-2 border-[3px] border-transparent transition-all hover:bg-[var(--hotpink)] hover:text-white hover:border-[var(--ink)] hover:shadow-[3px_3px_0_0_var(--ink)] active:scale-95"
                     >
-                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-[3px] border-[var(--ink)] bg-white text-xl shadow-[2px_2px_0_0_var(--ink)] transition-all group-hover:shadow-[4px_4px_0_0_var(--ink)] group-hover:-translate-y-0.5">
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-[3px] border-[var(--ink)] bg-white text-xl shadow-[2px_2px_0_0_var(--ink)] transition-all group-hover:shadow-[4px_4px_0_0_var(--ink)] group-hover:-translate-y-0.5 text-[var(--ink)]">
                             🚪
                         </span>
                         <AnimatePresence>
@@ -127,6 +131,53 @@ export default function BuyerSidebar() {
                     ))}
                 </div>
             </nav>
+        </>
+    );
+}
+
+function RoleSwitchButton({ open }) {
+    const { useAuthStore } = require("@/store/authStore");
+    const user = useAuthStore((s) => s.user);
+    const [isSellerModalOpen, setIsSellerModalOpen] = useState(false);
+    const SellerOnboardingModal = require("../../profile/SellerOnboardingModal").default;
+
+    if (!user) return null;
+
+    if (user.role === 'seller') {
+        return (
+            <Link href="/seller/dashboard" className="group flex w-full items-center gap-3 rounded-2xl px-2 py-2 border-[3px] border-transparent transition-all hover:bg-[var(--ink)] hover:text-[var(--acid)] hover:border-[var(--ink)] hover:shadow-[3px_3px_0_0_var(--ink)] active:scale-95 text-[var(--ink)]">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-[3px] border-[var(--ink)] bg-[var(--acid)] text-[var(--ink)] text-xl shadow-[2px_2px_0_0_var(--ink)] transition-all group-hover:shadow-[4px_4px_0_0_var(--ink)] group-hover:-translate-y-0.5">
+                    🏪
+                </span>
+                <AnimatePresence>
+                    {open && (
+                        <motion.span initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -6 }} className="whitespace-nowrap font-display text-sm font-black uppercase tracking-wide text-inherit">
+                            Seller Hub
+                        </motion.span>
+                    )}
+                </AnimatePresence>
+            </Link>
+        );
+    }
+
+    return (
+        <>
+            <button
+                onClick={() => setIsSellerModalOpen(true)}
+                className="group flex w-full items-center gap-3 rounded-2xl px-2 py-2 border-[3px] border-transparent transition-all hover:bg-[var(--acid)] hover:text-[var(--ink)] hover:border-[var(--ink)] hover:shadow-[3px_3px_0_0_var(--ink)] active:scale-95 text-[var(--ink)]"
+            >
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-[3px] border-[var(--ink)] bg-[var(--background)] text-[var(--ink)] text-xl shadow-[2px_2px_0_0_var(--ink)] transition-all group-hover:shadow-[4px_4px_0_0_var(--ink)] group-hover:-translate-y-0.5">
+                    🚀
+                </span>
+                <AnimatePresence>
+                    {open && (
+                        <motion.span initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -6 }} className="whitespace-nowrap font-display text-sm font-black uppercase tracking-wide text-inherit">
+                            Sell Items
+                        </motion.span>
+                    )}
+                </AnimatePresence>
+            </button>
+            <SellerOnboardingModal isOpen={isSellerModalOpen} onClose={() => setIsSellerModalOpen(false)} />
         </>
     );
 }
