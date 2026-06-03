@@ -49,7 +49,7 @@ function TopBar() {
         <span className="hidden md:inline">⚡ New: AI Auction Agent — try “find me a vintage Rolex”</span>
         <div className="flex items-center gap-6">
           <a href="/login" className="hover:text-[var(--acid)] transition-colors">Login</a>
-          <a href="/signup" className="rounded-full border-2 border-[var(--acid)] bg-[var(--acid)] px-4 py-1 text-[var(--ink)] hover:bg-transparent hover:text-[var(--acid)] transition-colors">Sign up</a>
+          <a href="/register" className="rounded-full border-2 border-[var(--acid)] bg-[var(--acid)] px-4 py-1 text-[var(--ink)] hover:bg-transparent hover:text-[var(--acid)] transition-colors">Sign up</a>
         </div>
       </div>
     </div>
@@ -675,7 +675,7 @@ function CTA() {
             </h2>
             <p className="mt-6 max-w-xl text-white/80 md:text-lg">Join 120,000+ collectors and creators flipping the auction game.</p>
             <div className="mt-10 flex flex-wrap gap-4">
-              <MagneticButton bg="var(--acid)" onClick={() => window.location.href = '/signup'}>Create free account</MagneticButton>
+              <MagneticButton bg="var(--acid)" onClick={() => window.location.href = '/register'}>Create free account</MagneticButton>
               <MagneticButton bg="var(--hotpink)" onClick={() => window.location.href = '/login'}>Browse auctions</MagneticButton>
             </div>
           </div>
