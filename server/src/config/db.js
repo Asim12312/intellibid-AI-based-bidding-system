@@ -1,13 +1,12 @@
-import mongoose from "mongoose"
+import mongoose from "mongoose";
 
-// code to connect database using mongoose
+// connect to database (supports both local and MongoDB Atlas)
 export const connectDB = async () => {
     try {
-        await mongoose.connect(process.env.MONGODB_URI || process.env.MONGO_URI);
-        console.log("MongoDB connected");
-    }
-    catch (err) {
-        console.error("MongoDB error: ", err);
+        const conn = await mongoose.connect(process.env.MONGODB_URI || process.env.MONGO_URI);
+        console.log(`MongoDB Connected: ${conn.connection.host}`);
+    } catch (err) {
+        console.error("MongoDB connection error: ", err);
         process.exit(1);
     }
-}
+};
