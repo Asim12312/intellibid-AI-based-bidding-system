@@ -1,5 +1,6 @@
 import cron from 'node-cron';
 import { runProfileBuilder } from '../modules/profile-builder/profileBuilder.job.js';
+import { resolveEndedAuctions, processExpiredOrders } from '../modules/auction/auction.job.js';
 
 export const startScheduler = () => {
     // Hourly: rebuild profiles for active users
@@ -13,5 +14,11 @@ export const startScheduler = () => {
         await runProfileBuilder();
     });
 
-    console.log('[Scheduler] Cron jobs started. Profile builder runs hourly.');
+    // Every minute: check for ended auctions and resolve them
+    cron.schedule('* * * * *', async () => {
+        await resolveEndedAuctions();
+        await processExpiredOrders();
+    });
+
+    console.log('[Scheduler] Cron jobs started. Profile builder runs hourly, auction resolution runs every minute.');
 };

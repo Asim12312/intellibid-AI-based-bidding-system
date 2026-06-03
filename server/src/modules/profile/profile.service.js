@@ -1,6 +1,6 @@
 import User from '../../models/user.model.js';
 import Bid from '../../models/bid.model.js';
-import Product from '../../models/product.model.js';
+import Auction from '../../models/auction.model.js';
 import bcrypt from 'bcryptjs';
 
 export const getProfileService = async (userId) => {
@@ -24,18 +24,18 @@ export const getProfileService = async (userId) => {
 
         stats = { totalBids, itemsWon, totalSpent };
     } else if (user.role === 'seller') {
-        const totalListings = await Product.countDocuments({ seller: userId });
+        const totalListings = await Auction.countDocuments({ seller: userId });
         
-        const sellerProducts = await Product.find({ seller: userId }).select('_id');
-        const productIds = sellerProducts.map(p => p._id);
+        const sellerAuctions = await Auction.find({ seller: userId }).select('_id');
+        const auctionIds = sellerAuctions.map(a => a._id);
 
         const revenueAggregation = await Bid.aggregate([
-            { $match: { product: { $in: productIds }, status: 'won' } },
+            { $match: { auction: { $in: auctionIds }, status: 'won' } },
             { $group: { _id: null, total: { $sum: "$amount" } } }
         ]);
         const totalRevenue = revenueAggregation.length > 0 ? revenueAggregation[0].total : 0;
 
-        const itemsSold = await Bid.countDocuments({ product: { $in: productIds }, status: 'won' });
+        const itemsSold = await Bid.countDocuments({ auction: { $in: auctionIds }, status: 'won' });
 
         stats = { totalListings, totalRevenue, itemsSold };
     }
@@ -44,7 +44,7 @@ export const getProfileService = async (userId) => {
 };
 
 export const updateProfileService = async (userId, updateData) => {
-    const allowedFields = ['firstName', 'lastName', 'bio', 'phone', 'location', 'avatar', 'businessName', 'website', 'notificationsEnabled', 'profileVisibility'];
+    const allowedFields = ['firstName', 'lastName', 'bio', 'phone', 'location', 'avatar', 'businessName', 'businessCategory', 'website', 'notificationsEnabled', 'profileVisibility'];
     
     const filteredUpdate = {};
     Object.keys(updateData).forEach(key => {
@@ -84,11 +84,40 @@ export const deleteAccountService = async (userId) => {
 };
 
 export const getPublicProfileService = async (userId) => {
-    const user = await User.findById(userId).select('firstName lastName bio avatar businessName website rating totalRatings role createdAt');
+    const user = await User.findById(userId).select('firstName lastName bio avatar businessName businessCategory website location phone rating totalRatings role createdAt profileVisibility isDeleted');
     
     if (!user || user.profileVisibility === 'private' || user.isDeleted) {
         throw new Error('Profile not found or private');
     }
 
-    return user;
+    let result = { user };
+
+    if (user.role === 'seller') {
+        const activeListings = await Auction.find({ 
+            seller: userId, 
+            status: 'active',
+            endTime: { $gt: new Date() }
+        })
+        .select('title images currentPrice startingPrice endTime bidCount')
+        .sort({ createdAt: -1 })
+        .limit(12);
+
+        // Calculate items sold
+        const sellerAuctions = await Auction.find({ seller: userId }).select('_id');
+        const auctionIds = sellerAuctions.map(a => a._id);
+        const totalSales = await Bid.countDocuments({ auction: { $in: auctionIds }, status: 'won' });
+
+        result.activeListings = activeListings;
+        result.stats = { 
+            totalSales, 
+            rating: user.rating,
+            totalRatings: user.totalRatings,
+        };
+    } else if (user.role === 'buyer') {
+        const totalBids = await Bid.countDocuments({ bidder: userId });
+        const itemsWon = await Bid.countDocuments({ bidder: userId, status: 'won' });
+        result.stats = { totalBids, itemsWon };
+    }
+
+    return result;
 };

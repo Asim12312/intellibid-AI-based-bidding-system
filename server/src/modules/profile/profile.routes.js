@@ -12,7 +12,8 @@ import {
 
 const router = express.Router();
 
-
+// Public route - only match valid MongoDB ObjectIds
+router.get('/:id([0-9a-fA-F]{24})', getPublicProfile);
 
 // Protected routes
 router.use(auth);
@@ -22,8 +23,5 @@ router.put('/update', updateProfile);
 router.post('/avatar', upload.single('avatar'), uploadAvatar);
 router.put('/change-password', changePassword);
 router.delete('/delete-account', deleteAccount);
-
-// Public route (Keep at bottom to avoid intercepting specific routes)
-router.get('/:id', getPublicProfile);
 
 export default router;

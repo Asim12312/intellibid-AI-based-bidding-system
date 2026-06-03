@@ -3,6 +3,7 @@ import Bid from '../../models/bid.model.js';
 import User from '../../models/user.model.js';
 import Auction from '../../models/auction.model.js';
 import { trackEventService } from '../events/events.service.js';
+import { broadcastBid } from '../../config/socket.js';
 export const getBuyerStatsService = async (userId) => {
     // 1. Active Bids Count
     const activeBidsCount = await Bid.countDocuments({
@@ -77,13 +78,13 @@ export const getMyBidsService = async (userId, tab = 'active', page = 1, limit =
 };
 
 export const placeBidService = async (userId, auctionId, bidAmount) => {
-    const auction = await Auction.findById(auctionId);
-    
-    if (!auction) throw new Error('Auction not found');
-    if (auction.status !== 'active') throw new Error('Auction is not active');
-    if (new Date(auction.endTime) < new Date()) throw new Error('Auction has ended');
-    if (auction.seller.toString() === userId.toString()) throw new Error('You cannot bid on your own auction');
-    if (bidAmount <= auction.currentPrice) throw new Error(`Bid must be greater than current price of $${auction.currentPrice}`);
+    // Basic checks first to avoid unnecessary DB hits
+    const auctionCheck = await Auction.findById(auctionId);
+    if (!auctionCheck) throw new Error('Auction not found');
+    if (auctionCheck.status !== 'active') throw new Error('Auction is not active');
+    if (new Date(auctionCheck.endTime) < new Date()) throw new Error('Auction has ended');
+    if (auctionCheck.seller.toString() === userId.toString()) throw new Error('You cannot bid on your own auction');
+    if (bidAmount <= auctionCheck.currentPrice) throw new Error(`Bid must be greater than current price of $${auctionCheck.currentPrice.toLocaleString()}`);
 
     // Check if user is already highest bidder
     const highestBid = await Bid.findOne({ auction: auctionId, status: 'winning' });
@@ -91,7 +92,21 @@ export const placeBidService = async (userId, auctionId, bidAmount) => {
         throw new Error('You are already the highest bidder');
     }
 
-    // Atomic-ish update: Mark old winning bids as outbid
+    const outbidUserId = highestBid ? highestBid.bidder.toString() : null;
+
+    // Concurrency-safe atomic update
+    // Only succeeds if currentPrice is STILL less than the incoming bidAmount
+    const updatedAuction = await Auction.findOneAndUpdate(
+        { _id: auctionId, currentPrice: { $lt: bidAmount }, status: 'active' },
+        { $set: { currentPrice: bidAmount }, $inc: { bidCount: 1 } },
+        { new: true }
+    );
+
+    if (!updatedAuction) {
+        throw new Error('Your bid was just beaten by someone else! Please refresh and try a higher amount.');
+    }
+
+    // Mark old winning bids as outbid
     await Bid.updateMany(
         { auction: auctionId, status: 'winning' },
         { $set: { status: 'outbid' } }
@@ -105,10 +120,18 @@ export const placeBidService = async (userId, auctionId, bidAmount) => {
         status: 'winning'
     });
 
-    // Update auction price and bid count
-    auction.currentPrice = bidAmount;
-    auction.bidCount += 1;
-    await auction.save();
+    const user = await User.findById(userId).select('firstName lastName');
+    const bidderName = `${user.firstName} ${user.lastName}`;
+
+    // Broadcast the new bid using Socket.IO to update all viewers instantly
+    broadcastBid({
+        auctionId,
+        newPrice: bidAmount,
+        bidCount: updatedAuction.bidCount,
+        bidderId: userId,
+        bidderName,
+        outbidUserId
+    });
 
     // Fire tracking event (fire and forget)
     trackEventService(userId, { 
@@ -121,39 +144,40 @@ export const placeBidService = async (userId, auctionId, bidAmount) => {
 };
 
 export const getRecommendationsService = async (userId) => {
-    // Get product IDs the user has already bid on
-    const userBids = await Bid.find({ bidder: userId }).select('product');
-    const biddedProductIds = userBids.map(b => b.product);
+    // Get auction IDs the user has already bid on
+    const userBids = await Bid.find({ bidder: userId }).select('auction');
+    const biddedAuctionIds = userBids.map(b => b.auction);
 
-    const recommendations = await Product.find({
-        _id: { $nin: biddedProductIds },
-        endingDate: { $gt: new Date() } // Active condition
+    const recommendations = await Auction.find({
+        _id: { $nin: biddedAuctionIds },
+        status: 'active',
+        endTime: { $gt: new Date() } // Active condition
     })
     .sort({ createdAt: -1 })
     .limit(4)
     .lean();
 
-    return recommendations.map(product => ({
-        id: product._id,
-        title: product.name,
-        startingPrice: product.startingPrice,
-        currentPrice: product.startingPrice, // Placeholder since we removed currentPrice from product
-        image: product.mainImage || 'https://via.placeholder.com/300'
+    return recommendations.map(auction => ({
+        id: auction._id,
+        title: auction.title,
+        startingPrice: auction.startingPrice,
+        currentPrice: auction.currentPrice,
+        image: auction.images && auction.images.length > 0 ? auction.images[0] : 'https://via.placeholder.com/300'
     }));
 };
 
 export const getRecentActivityService = async (userId) => {
     const recentBids = await Bid.find({ bidder: userId })
-        .populate('product', 'name')
+        .populate('auction', 'title images')
         .sort({ updatedAt: -1 })
         .limit(5)
         .lean();
 
     return recentBids.map(bid => {
         let message = '';
-        if (bid.status === 'winning') message = `You placed a winning bid on ${bid.product?.name}`;
-        else if (bid.status === 'outbid') message = `You were outbid on ${bid.product?.name}`;
-        else if (bid.status === 'won') message = `You won ${bid.product?.name}`;
+        if (bid.status === 'winning') message = `You placed a winning bid on ${bid.auction?.title}`;
+        else if (bid.status === 'outbid') message = `You were outbid on ${bid.auction?.title}`;
+        else if (bid.status === 'won') message = `You won ${bid.auction?.title}`;
 
         return {
             id: bid._id,
@@ -162,4 +186,57 @@ export const getRecentActivityService = async (userId) => {
             time: bid.updatedAt
         };
     });
+};
+
+export const toggleWatchlistService = async (userId, auctionId) => {
+    const user = await User.findById(userId);
+    if (!user) throw new Error('User not found');
+
+    const index = user.watchlist.indexOf(auctionId);
+    let added = false;
+    
+    if (index === -1) {
+        user.watchlist.push(auctionId);
+        added = true;
+        // Fire tracking event
+        trackEventService(userId, { 
+            auctionId, 
+            eventType: 'watchlist_add'
+        }).catch(() => {});
+    } else {
+        user.watchlist.splice(index, 1);
+        // Fire tracking event
+        trackEventService(userId, { 
+            auctionId, 
+            eventType: 'watchlist_remove'
+        }).catch(() => {});
+    }
+
+    await user.save();
+    return { added };
+};
+
+export const getWatchlistService = async (userId) => {
+    const user = await User.findById(userId).populate({
+        path: 'watchlist',
+        select: 'title images currentPrice startingPrice status endTime bidCount',
+        match: { status: 'active' } // optionally only show active
+    });
+    
+    if (!user) throw new Error('User not found');
+    
+    // Filter out nulls in case an auction was deleted
+    return user.watchlist.filter(item => item !== null);
+};
+
+import Order from '../../models/order.model.js';
+
+export const getMyOrdersService = async (userId) => {
+    const orders = await Order.find({ buyer: userId })
+        .populate('auction', 'title images')
+        .populate('seller', 'firstName lastName')
+        .sort({ createdAt: -1 })
+        .lean();
+
+    return orders;
 };

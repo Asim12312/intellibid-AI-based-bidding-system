@@ -29,7 +29,6 @@ export const uploadAvatar = async (req, res) => {
         if (!req.file) {
             return res.status(400).json({ success: false, message: 'No file uploaded' });
         }
-        
         const user = await updateProfileService(req.user.id, { avatar: req.file.path });
         res.status(200).json({ success: true, avatarUrl: req.file.path, user });
     } catch (error) {
@@ -53,17 +52,18 @@ export const changePassword = async (req, res) => {
 export const deleteAccount = async (req, res) => {
     try {
         await deleteAccountService(req.user.id);
-        res.clearCookie('token'); // Logout
+        res.clearCookie('token');
         res.status(200).json({ success: true, message: 'Account deleted' });
     } catch (error) {
         res.status(400).json({ success: false, message: error.message });
     }
 };
 
+// FIX: service returns { user, stats, activeListings } — must be spread, not nested
 export const getPublicProfile = async (req, res) => {
     try {
-        const user = await getPublicProfileService(req.params.id);
-        res.status(200).json({ success: true, user });
+        const data = await getPublicProfileService(req.params.id);
+        res.status(200).json({ success: true, ...data });
     } catch (error) {
         res.status(404).json({ success: false, message: error.message });
     }

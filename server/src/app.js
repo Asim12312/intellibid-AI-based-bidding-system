@@ -11,13 +11,17 @@ import profileRoutes from './modules/profile/profile.routes.js';
 import feedRoutes from './modules/feed/feed.routes.js';
 import eventsRoutes from './modules/events/events.routes.js';
 import messagesRoutes from './modules/messages/messages.routes.js';
+import auctionRoutes from './modules/auction/auction.routes.js';
+import paymentRoutes from './modules/payment/payment.routes.js';
 
 import { errorHandler } from './middleware/error.middleware.js';
 
 const app = express();
 
 // security middleware
-app.use(helmet());
+app.use(helmet({
+  crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" }
+}));
 app.use(cors({
   origin: process.env.CLIENT_URL || 'http://localhost:3000',
   credentials: true,
@@ -38,10 +42,13 @@ app.use('/api/profile', profileRoutes);
 app.use('/api/feed', feedRoutes);
 app.use('/api/events', eventsRoutes);
 app.use('/api/messages', messagesRoutes);
+app.use('/api/auction', auctionRoutes);
+app.use('/api/payments', paymentRoutes);
 
 
 // Error Handler
 app.use(errorHandler);
 
 export default app;
+
 

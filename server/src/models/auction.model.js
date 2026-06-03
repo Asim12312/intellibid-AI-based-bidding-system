@@ -24,5 +24,6 @@ const auctionSchema = new mongoose.Schema({
 // Index for faster queries
 auctionSchema.index({ status: 1, endTime: 1 });
 auctionSchema.index({ seller: 1 });
+auctionSchema.index({ title: 'text', description: 'text', tags: 'text' });
 
 export default mongoose.model('Auction', auctionSchema);

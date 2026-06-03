@@ -54,6 +54,10 @@ const userSchema = new mongoose.Schema({
         type: String,
         trim: true
     },
+    businessCategory: {
+        type: String,
+        trim: true
+    },
     // For sellers
     website: {
         type: String,
@@ -81,6 +85,12 @@ const userSchema = new mongoose.Schema({
         type: String,
         enum: ['public', 'private'],
         default: 'public'
+    },
+    // Account Status
+    status: {
+        type: String,
+        enum: ['active', 'suspended', 'banned'],
+        default: 'active'
     },
     isDeleted: {
         type: Boolean,

@@ -6,7 +6,10 @@ import {
     placeBid,
     getRecommendations,
     getRecentActivity,
-    getAiPicks
+    getAiPicks,
+    toggleWatchlist,
+    getWatchlist,
+    getMyOrders
 } from './buyer.controller.js';
 
 const router = express.Router();
@@ -21,5 +24,10 @@ router.post('/bids/place', placeBid);
 router.get('/recommendations', getRecommendations);
 router.get('/activity', getRecentActivity);
 router.get('/ai-picks', getAiPicks);
+router.get('/orders', getMyOrders);
+
+// Watchlist routes
+router.get('/watchlist', getWatchlist);
+router.post('/watchlist/toggle', toggleWatchlist);
 
 export default router;

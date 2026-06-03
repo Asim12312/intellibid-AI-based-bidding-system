@@ -40,13 +40,22 @@ export const initSocket = (httpServer) => {
         // Join personal room for notifications
         socket.join(`user:${userId}`);
 
-        // Join conversation rooms
+        // ── Conversation rooms ────────────────────────────────────────────────
         socket.on('join:conversation', (conversationId) => {
             socket.join(`conv:${conversationId}`);
         });
 
         socket.on('leave:conversation', (conversationId) => {
             socket.leave(`conv:${conversationId}`);
+        });
+
+        // ── Auction rooms (live bid updates) ──────────────────────────────────
+        socket.on('join:auction', (auctionId) => {
+            socket.join(`auction:${auctionId}`);
+        });
+
+        socket.on('leave:auction', (auctionId) => {
+            socket.leave(`auction:${auctionId}`);
         });
 
         socket.on('disconnect', () => {
@@ -62,3 +71,28 @@ export const getIO = () => {
     if (!io) throw new Error('Socket.io not initialized');
     return io;
 };
+
+// Broadcast a new bid to all watchers of an auction + notify outbid user
+export const broadcastBid = ({ auctionId, newPrice, bidCount, bidderId, bidderName, outbidUserId }) => {
+    if (!io) return;
+    // Update all viewers of the auction
+    io.to(`auction:${auctionId}`).emit('bid:new', {
+        auctionId,
+        newPrice,
+        bidCount,
+        bidderId,
+        bidderName,
+        timestamp: new Date().toISOString(),
+    });
+    // Notify the outbid user personally
+    if (outbidUserId) {
+        io.to(`user:${outbidUserId}`).emit('notification:new', {
+            type: 'outbid',
+            title: "You've been outbid!",
+            body: `Someone placed a higher bid. Current price: $${newPrice.toLocaleString()}`,
+            auctionId,
+            timestamp: new Date().toISOString(),
+        });
+    }
+};
+
