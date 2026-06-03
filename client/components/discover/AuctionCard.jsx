@@ -30,18 +30,22 @@ export default function AuctionCard({ auction }) {
             const diff = new Date(auction.endTime).getTime() - Date.now();
             if (diff <= 0) return 'Ended';
 
-            const hours = Math.floor(diff / (1000 * 60 * 60));
-            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-            
-            setIsUrgent(hours < 24);
+            const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const s = Math.floor((diff % (1000 * 60)) / 1000);
 
-            if (hours > 24) return `${Math.floor(hours / 24)}d left`;
-            if (hours > 0) return `${hours}h ${minutes}m left`;
-            return `${minutes}m left`;
+            setIsUrgent(d === 0 && h < 24);
+
+            const pad = (num) => num.toString().padStart(2, '0');
+
+            if (d > 0) return `${d}d ${pad(h)}h ${pad(m)}m ${pad(s)}s`;
+            if (h > 0) return `${pad(h)}h ${pad(m)}m ${pad(s)}s`;
+            return `${pad(m)}m ${pad(s)}s`;
         };
 
         setTimeLeft(calculateTimeLeft());
-        const timer = setInterval(() => setTimeLeft(calculateTimeLeft()), 60000);
+        const timer = setInterval(() => setTimeLeft(calculateTimeLeft()), 1000);
         return () => clearInterval(timer);
     }, [auction.endTime]);
 
@@ -62,8 +66,8 @@ export default function AuctionCard({ auction }) {
             {/* Image */}
             <div className="relative aspect-square border-b-[3px] border-[var(--ink)] bg-gray-100 overflow-hidden">
                 {auction.images && auction.images[0] ? (
-                    <img 
-                        src={auction.images[0]} 
+                    <img
+                        src={auction.images[0]}
                         alt={auction.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                         loading="lazy"
@@ -73,8 +77,8 @@ export default function AuctionCard({ auction }) {
                         No Image
                     </div>
                 )}
-                
-                <button 
+
+                <button
                     onClick={(e) => {
                         e.preventDefault();
                         trackEvent('watchlist_add');
@@ -115,7 +119,7 @@ export default function AuctionCard({ auction }) {
                     </div>
                 </div>
 
-                <Link 
+                <Link
                     href={`/auction/${auction._id}`}
                     onClick={() => trackEvent('item_view', { source: 'feed_click' })}
                     className="mt-4 w-full bg-[var(--electric)] text-white py-3 rounded-xl border-[2px] border-[var(--ink)] font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 hover:bg-[var(--ink)] hover:text-[var(--acid)] transition-colors"

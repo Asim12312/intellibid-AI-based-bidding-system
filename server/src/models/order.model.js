@@ -13,6 +13,16 @@ const orderSchema = new mongoose.Schema({
     stripeSessionId: { type: String },
     expiresAt: { type: Date, required: true },
     paymentDate: { type: Date },
+    trackingNumber: { type: String },
+    shippingAddress: {
+        street: String,
+        city: String,
+        state: String,
+        zip: String,
+        country: String
+    },
+    platformFee: { type: Number, default: 0 },
+    sellerPayout: { type: Number, default: 0 },
 }, { timestamps: true });
 
 // Indexes for quick lookups and job processing

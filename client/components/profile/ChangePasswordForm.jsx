@@ -77,11 +77,6 @@ export default function ChangePasswordForm() {
                 </div>
             )}
 
-            <div className="mb-6 p-4 bg-[var(--background)] border-[2px] border-[var(--ink)] rounded-xl opacity-80 text-xs font-medium">
-                <strong className="block mb-1 font-black uppercase tracking-widest text-[10px]">Password Rules:</strong>
-                Passwords must be at least 8 characters long, contain a number, an uppercase letter, and a special character. Max length is 100 characters.
-            </div>
-
             <form onSubmit={handleSubmit} className="space-y-6">
                 <PasswordField label="Current Password" name="oldPassword" value={form.oldPassword} onChange={handleChange} maxLength={100} />
 

@@ -55,7 +55,7 @@ export const handleStripeWebhook = async (req, res) => {
 
     try {
         event = stripe.webhooks.constructEvent(
-            req.body, // Make sure body parser is raw for this endpoint
+            req.body,
             sig,
             process.env.STRIPE_WEBHOOK_SECRET || 'whsec_placeholder'
         );
@@ -68,10 +68,23 @@ export const handleStripeWebhook = async (req, res) => {
         const orderId = session.client_reference_id;
 
         if (orderId) {
-            await Order.findByIdAndUpdate(orderId, {
-                status: 'paid',
-                paymentDate: new Date()
-            });
+            const order = await Order.findById(orderId);
+            if (order && order.status === 'pending') {
+                const platformFeeRate = 0.05; // 5%
+                const amount = order.amount;
+                const platformFee = amount * platformFeeRate;
+                const sellerPayout = amount - platformFee;
+
+                await Order.findByIdAndUpdate(orderId, {
+                    status: 'paid',
+                    paymentDate: new Date(),
+                    platformFee,
+                    sellerPayout
+                });
+
+                // NOTE: Production logic for Stripe Connect Payouts would happen here
+                console.log(`Payment confirmed for Order ${orderId}. Net to platforms: ${platformFee}, Payout to seller: ${sellerPayout}`);
+            }
         }
     }
 

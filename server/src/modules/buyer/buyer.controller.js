@@ -1,18 +1,7 @@
-import { asyncHandler } from '../../utils/asyncHandler.js';
-import {
-    getBuyerStatsService,
-    getMyBidsService,
-    placeBidService,
-    getRecommendationsService,
-    getRecentActivityService,
-    toggleWatchlistService,
-    getWatchlistService
-} from './buyer.service.js';
 
-export const getBuyerStats = asyncHandler(async (req, res) => {
 
-    const stats = await getBuyerStatsService(req.user.id);
-    res.status(200).json({ success: true, data: stats });
+const stats = await getBuyerStatsService(req.user.id);
+res.status(200).json({ success: true, data: stats });
 });
 
 export const getMyBids = asyncHandler(async (req, res) => {
@@ -51,7 +40,7 @@ export const getAiPicks = asyncHandler(async (req, res) => {
 export const toggleWatchlist = asyncHandler(async (req, res) => {
     const { auctionId } = req.body;
     if (!auctionId) return res.status(400).json({ success: false, message: 'auctionId is required' });
-    
+
     const result = await toggleWatchlistService(req.user.id, auctionId);
     res.status(200).json({ success: true, ...result });
 });

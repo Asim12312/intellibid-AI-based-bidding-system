@@ -4,6 +4,8 @@ import User from '../../models/user.model.js';
 import Auction from '../../models/auction.model.js';
 import { trackEventService } from '../events/events.service.js';
 import { broadcastBid } from '../../config/socket.js';
+import Order from '../../models/order.model.js';
+
 export const getBuyerStatsService = async (userId) => {
     // 1. Active Bids Count
     const activeBidsCount = await Bid.countDocuments({
@@ -18,7 +20,6 @@ export const getBuyerStatsService = async (userId) => {
     });
 
     // 3. Total Spent
-    // Aggregate the sum of amounts for 'won' bids
     const spentAggregation = await Bid.aggregate([
         { $match: { bidder: userId, status: 'won' } },
         { $group: { _id: null, total: { $sum: "$amount" } } }
@@ -46,8 +47,6 @@ export const getMyBidsService = async (userId, tab = 'active', page = 1, limit =
         query.status = 'won';
     } else if (tab === 'lost') {
         query.status = 'outbid';
-        // Needs a join/populate to check if auction is ended, but for now we filter post-query or assume outbid is lost if auction ended.
-        // A better approach is to query auctions that are ended where user bid and didn't win.
     }
 
     const skip = (page - 1) * limit;
@@ -59,7 +58,6 @@ export const getMyBidsService = async (userId, tab = 'active', page = 1, limit =
         .limit(limit)
         .lean();
 
-    // If tab === 'lost', filter out active auctions
     let filteredBids = bids;
     if (tab === 'lost') {
         filteredBids = bids.filter(b => b.auction && b.auction.status !== 'active');
@@ -67,7 +65,7 @@ export const getMyBidsService = async (userId, tab = 'active', page = 1, limit =
         filteredBids = bids.filter(b => b.auction && b.auction.status === 'active');
     }
 
-    const total = await Bid.countDocuments(query); // Rough count, inaccurate for lost due to post-filter
+    const total = await Bid.countDocuments(query);
 
     return {
         bids: filteredBids,
@@ -78,7 +76,7 @@ export const getMyBidsService = async (userId, tab = 'active', page = 1, limit =
 };
 
 export const placeBidService = async (userId, auctionId, bidAmount) => {
-    // Basic checks first to avoid unnecessary DB hits
+    // Basic checks first
     const auctionCheck = await Auction.findById(auctionId);
     if (!auctionCheck) throw new Error('Auction not found');
     if (auctionCheck.status !== 'active') throw new Error('Auction is not active');
@@ -95,10 +93,9 @@ export const placeBidService = async (userId, auctionId, bidAmount) => {
     const outbidUserId = highestBid ? highestBid.bidder.toString() : null;
 
     // Concurrency-safe atomic update
-    // Only succeeds if currentPrice is STILL less than the incoming bidAmount
     const updatedAuction = await Auction.findOneAndUpdate(
         { _id: auctionId, currentPrice: { $lt: bidAmount }, status: 'active' },
-        { $set: { currentPrice: bidAmount }, $inc: { bidCount: 1 } },
+        { $set: { currentPrice: bidAmount }, $inc: { bidCount: 1, bidVersion: 1 } },
         { new: true }
     );
 
@@ -123,7 +120,7 @@ export const placeBidService = async (userId, auctionId, bidAmount) => {
     const user = await User.findById(userId).select('firstName lastName');
     const bidderName = `${user.firstName} ${user.lastName}`;
 
-    // Broadcast the new bid using Socket.IO to update all viewers instantly
+    // Broadcast
     broadcastBid({
         auctionId,
         newPrice: bidAmount,
@@ -133,29 +130,28 @@ export const placeBidService = async (userId, auctionId, bidAmount) => {
         outbidUserId
     });
 
-    // Fire tracking event (fire and forget)
-    trackEventService(userId, { 
-        auctionId, 
-        eventType: 'bid_placed', 
-        metadata: { bidAmount } 
+    // Fire tracking event
+    trackEventService(userId, {
+        auctionId,
+        eventType: 'bid_placed',
+        metadata: { bidAmount }
     }).catch(err => console.error('Failed to track bid event', err));
 
     return { bid: newBid, newCurrentPrice: bidAmount };
 };
 
 export const getRecommendationsService = async (userId) => {
-    // Get auction IDs the user has already bid on
     const userBids = await Bid.find({ bidder: userId }).select('auction');
     const biddedAuctionIds = userBids.map(b => b.auction);
 
     const recommendations = await Auction.find({
         _id: { $nin: biddedAuctionIds },
         status: 'active',
-        endTime: { $gt: new Date() } // Active condition
+        endTime: { $gt: new Date() }
     })
-    .sort({ createdAt: -1 })
-    .limit(4)
-    .lean();
+        .sort({ createdAt: -1 })
+        .limit(4)
+        .lean();
 
     return recommendations.map(auction => ({
         id: auction._id,
@@ -194,22 +190,20 @@ export const toggleWatchlistService = async (userId, auctionId) => {
 
     const index = user.watchlist.indexOf(auctionId);
     let added = false;
-    
+
     if (index === -1) {
         user.watchlist.push(auctionId);
         added = true;
-        // Fire tracking event
-        trackEventService(userId, { 
-            auctionId, 
+        trackEventService(userId, {
+            auctionId,
             eventType: 'watchlist_add'
-        }).catch(() => {});
+        }).catch(() => { });
     } else {
         user.watchlist.splice(index, 1);
-        // Fire tracking event
-        trackEventService(userId, { 
-            auctionId, 
+        trackEventService(userId, {
+            auctionId,
             eventType: 'watchlist_remove'
-        }).catch(() => {});
+        }).catch(() => { });
     }
 
     await user.save();
@@ -220,16 +214,11 @@ export const getWatchlistService = async (userId) => {
     const user = await User.findById(userId).populate({
         path: 'watchlist',
         select: 'title images currentPrice startingPrice status endTime bidCount',
-        match: { status: 'active' } // optionally only show active
+        match: { status: 'active' }
     });
-    
     if (!user) throw new Error('User not found');
-    
-    // Filter out nulls in case an auction was deleted
     return user.watchlist.filter(item => item !== null);
 };
-
-import Order from '../../models/order.model.js';
 
 export const getMyOrdersService = async (userId) => {
     const orders = await Order.find({ buyer: userId })
@@ -237,6 +226,5 @@ export const getMyOrdersService = async (userId) => {
         .populate('seller', 'firstName lastName')
         .sort({ createdAt: -1 })
         .lean();
-
     return orders;
 };
