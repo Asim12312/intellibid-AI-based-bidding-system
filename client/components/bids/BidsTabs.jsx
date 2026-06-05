@@ -11,7 +11,7 @@ export default function BidsTabs() {
     const { activeTab, setTab } = useBidsStore();
 
     return (
-        <div className="flex items-center gap-4 overflow-x-auto pb-4 mb-4 scrollbar-hide border-b-[3px] border-black/10">
+        <div className="relative z-20 flex items-center gap-4 overflow-x-auto pb-4 mb-4 scrollbar-hide border-b-[3px] border-black/10 pr-4">
             {TABS.map(tab => (
                 <button
                     key={tab.id}

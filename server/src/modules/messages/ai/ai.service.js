@@ -52,7 +52,7 @@ export const chatWithAI = async (userId, userMessage) => {
 
     // 4. Build model with safety + generation config
     const model = genAI.getGenerativeModel({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-1.5-flash',
         systemInstruction,
         safetySettings: SAFETY_SETTINGS,
         generationConfig: {

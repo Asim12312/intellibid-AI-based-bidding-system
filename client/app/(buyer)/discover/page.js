@@ -1,25 +1,33 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useFeedStore } from '@/store/feedStore';
 import { useAuthStore } from '@/store/authStore';
 import FeedGrid from '@/components/discover/FeedGrid';
 import FeedFilters from '@/components/discover/FeedFilters';
 import ColdStartPicker from '@/components/discover/ColdStartPicker';
+import SearchBar from '@/components/discover/SearchBar';
+import AuctionCard from '@/components/discover/AuctionCard';
 import { Compass } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { api } from '@/lib/api';
 
 export default function DiscoverPage() {
-    const { fetchNextPage, items, page, loading } = useFeedStore();
+    const { fetchNextPage, items, page, loading: feedLoading } = useFeedStore();
     const user = useAuthStore(s => s.user);
     const [showOnboarding, setShowOnboarding] = useState(false);
 
-    // Initial fetch
+    // Search state
+    const [searchQuery, setSearchQuery] = useState("");
+    const [searchResults, setSearchResults] = useState([]);
+    const [searchLoading, setSearchLoading] = useState(false);
+
+    // Initial fetch for feed
     useEffect(() => {
-        if (items.length === 0 && page === 1 && !loading) {
+        if (items.length === 0 && page === 1 && !feedLoading && !searchQuery) {
             fetchNextPage();
         }
-    }, [fetchNextPage, items.length, page, loading]);
+    }, [fetchNextPage, items.length, page, feedLoading, searchQuery]);
 
     // Check if we need to show onboarding (new users)
     useEffect(() => {
@@ -29,10 +37,31 @@ export default function DiscoverPage() {
         // If we fetched the feed and it's 'trending' (cold start), and they haven't seen the picker
         const isColdStartFeed = useFeedStore.getState().feedType === 'trending';
         
-        if (!hasSeenOnboarding && isColdStartFeed && !loading && items.length > 0) {
+        if (!hasSeenOnboarding && isColdStartFeed && !feedLoading && items.length > 0) {
             setShowOnboarding(true);
         }
-    }, [user, loading, items.length]);
+    }, [user, feedLoading, items.length]);
+
+    // Handle Search
+    const handleSearch = useCallback(async (query) => {
+        setSearchQuery(query);
+        if (!query.trim()) {
+            setSearchResults([]);
+            return;
+        }
+
+        setSearchLoading(true);
+        try {
+            const res = await api(`/api/auction/search?q=${encodeURIComponent(query)}`);
+            if (res.success) {
+                setSearchResults(res.data);
+            }
+        } catch (error) {
+            console.error("Search failed:", error);
+        } finally {
+            setSearchLoading(false);
+        }
+    }, []);
 
     const handleOnboardingComplete = () => {
         setShowOnboarding(false);
@@ -68,8 +97,35 @@ export default function DiscoverPage() {
                 </div>
             </div>
 
-            <FeedFilters />
-            <FeedGrid />
+            <SearchBar onSearch={handleSearch} loading={searchLoading} />
+
+            {!searchQuery ? (
+                <>
+                    <FeedFilters />
+                    <FeedGrid />
+                </>
+            ) : (
+                <div className="mt-8">
+                    <h2 className="font-display text-2xl font-black uppercase tracking-tight mb-6">
+                        Search Results for "{searchQuery}"
+                    </h2>
+                    {searchResults.length > 0 ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                            {searchResults.map(auction => (
+                                <AuctionCard key={auction._id} auction={auction} />
+                            ))}
+                        </div>
+                    ) : (
+                        !searchLoading && (
+                            <div className="text-center py-20 bg-white border-[4px] border-[var(--ink)] rounded-3xl shadow-[8px_8px_0_0_var(--ink)]">
+                                <span className="text-6xl block mb-4">🔍</span>
+                                <h3 className="font-display text-2xl font-black uppercase">No results found</h3>
+                                <p className="opacity-60 font-medium mt-2">Try adjusting your search terms or using different keywords.</p>
+                            </div>
+                        )
+                    )}
+                </div>
+            )}
         </div>
     );
 }

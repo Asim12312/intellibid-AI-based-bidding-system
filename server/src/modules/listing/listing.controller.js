@@ -21,13 +21,13 @@ export const createListing = asyncHandler(async (req, res) => {
 
 // POST /api/seller/listings/ai-enhance
 export const aiEnhanceListing = asyncHandler(async (req, res) => {
-    const { rawTitle, category, imageUrls } = req.body;
+    const { rawTitle, category, imageCount } = req.body;
 
     if (!rawTitle || !category) {
         return res.status(400).json({ success: false, message: 'rawTitle and category are required' });
     }
 
-    const enhanced = await getAiEnhancedContentService(rawTitle, category, imageUrls || []);
+    const enhanced = await getAiEnhancedContentService(rawTitle, category, imageCount || 0);
     res.status(200).json({ success: true, data: enhanced });
 });
 

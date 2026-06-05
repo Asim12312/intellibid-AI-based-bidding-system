@@ -51,6 +51,7 @@ export const getFeedService = async (userId, { page = 1, category, minPrice, max
 
     // Fetch candidates (more than feed size for scoring diversity)
     const candidates = await Auction.find(filter)
+        .sort({ createdAt: -1 }) // Get newest items as candidates
         .limit(FEED_SIZE * CANDIDATES_MULTIPLIER)
         .lean();
 

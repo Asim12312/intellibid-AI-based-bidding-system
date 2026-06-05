@@ -65,7 +65,7 @@ export const searchAuctions = asyncHandler(async (req, res) => {
         if (process.env.GEMINI_API_KEY) {
             try {
                 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-                const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+                const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
                 const expansionPrompt = `You are a search query expansion engine for an e-commerce auction platform.
 The user searched for: "${q}"

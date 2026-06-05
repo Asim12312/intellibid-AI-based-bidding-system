@@ -46,7 +46,7 @@ export default function BidCard({ bid }) {
         <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className={`relative flex flex-col md:flex-row bg-white border-[3px] border-[var(--ink)] rounded-2xl overflow-hidden shadow-[4px_4px_0_0_var(--ink)] transition-all ${isWon ? 'ring-4 ring-[var(--sunset)] ring-opacity-50' : ''}`}
+            className={`relative z-0 flex flex-col md:flex-row bg-white border-[3px] border-[var(--ink)] rounded-2xl overflow-hidden shadow-[4px_4px_0_0_var(--ink)] transition-all ${isWon ? 'ring-4 ring-[var(--sunset)] ring-opacity-50' : ''}`}
         >
             {/* Status Badge */}
             <div className={`absolute top-3 left-3 z-10 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border-[2px] shadow-[2px_2px_0_0_var(--ink)] flex items-center gap-1 ${statusConfig.color}`}>
@@ -54,12 +54,12 @@ export default function BidCard({ bid }) {
             </div>
 
             {/* Image */}
-            <div className="relative w-full md:w-48 h-48 md:h-auto border-b-[3px] md:border-b-0 md:border-r-[3px] border-[var(--ink)] bg-gray-100 shrink-0">
+            <div className="relative w-full md:w-64 h-64 border-b-[3px] md:border-b-0 md:border-r-[3px] border-[var(--ink)] bg-gray-100 shrink-0">
                 {auction.images?.[0] ? (
                     <img 
                         src={auction.images[0]} 
                         alt={auction.title}
-                        className="w-full h-full object-cover grayscale-[20%]"
+                        className="w-full h-full object-cover grayscale-[20%] group-hover:grayscale-0 transition-all duration-500"
                     />
                 ) : (
                     <div className="w-full h-full flex items-center justify-center font-display opacity-10">No Image</div>

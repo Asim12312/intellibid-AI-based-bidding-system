@@ -1,101 +1,89 @@
-import Product from '../../models/product.model.js';
+import Auction from '../../models/auction.model.js';
 import Bid from '../../models/bid.model.js';
 import mongoose from 'mongoose';
 
 export const getSellerStatsService = async (sellerId) => {
-    // 1. Total Revenue (sum of winning bids for products sold by this seller)
-    // First, find all products by this seller
-    const sellerProducts = await Product.find({ seller: sellerId }).select('_id');
-    const productIds = sellerProducts.map(p => p._id);
-
-    // Aggregate winning bids
-    const revenueAggregation = await Bid.aggregate([
-        { $match: { product: { $in: productIds }, status: 'won' } },
-        { $group: { _id: null, total: { $sum: "$amount" } } }
+    // 1. Total Revenue (sum of currentPrice for ended auctions with a winner)
+    const revenueAggregation = await Auction.aggregate([
+        { $match: { seller: new mongoose.Types.ObjectId(sellerId), status: 'ended', winner: { $exists: true } } },
+        { $group: { _id: null, total: { $sum: "$currentPrice" } } }
     ]);
     const totalRevenue = revenueAggregation.length > 0 ? revenueAggregation[0].total : 0;
 
     // 2. Active Listings Count
-    const activeListingsCount = await Product.countDocuments({
+    const activeListingsCount = await Auction.countDocuments({
         seller: sellerId,
-        endingDate: { $gt: new Date() } // Active products
+        status: 'active',
+        endTime: { $gt: new Date() }
     });
 
-    // 3. Pending Shipments (mock logic based on 'won' bids that haven't been fulfilled)
-    // Since we don't have an Order model yet, we will count 'won' bids
-    const pendingShipments = await Bid.countDocuments({
-        product: { $in: productIds },
-        status: 'won'
+    // 3. Pending Orders (Ended auctions where winner exists - simple mock for now)
+    const pendingOrders = await Auction.countDocuments({
+        seller: sellerId,
+        status: 'ended',
+        winner: { $exists: true }
     });
 
-    // 4. Total Views / Watchers (Mocked for now as we don't have tracking in the schema)
-    const totalViews = activeListingsCount * 142; // arbitrary metric for visual testing
+    // 4. Total Views Across All Listings
+    const viewsAggregation = await Auction.aggregate([
+        { $match: { seller: new mongoose.Types.ObjectId(sellerId) } },
+        { $group: { _id: null, total: { $sum: "$viewCount" } } }
+    ]);
+    const totalViews = viewsAggregation.length > 0 ? viewsAggregation[0].total : 0;
 
     return {
         totalRevenue,
         activeListingsCount,
-        pendingShipments,
+        pendingShipments: pendingOrders,
         totalViews
     };
 };
 
 export const getActiveListingsService = async (sellerId) => {
     // Fetch products belonging to the seller that are still active
-    const activeProducts = await Product.find({
+    const activeAuctions = await Auction.find({
         seller: sellerId,
-        endingDate: { $gt: new Date() }
+        status: 'active',
+        endTime: { $gt: new Date() }
     })
-    .sort({ createdAt: -1 })
+    .sort({ endTime: 1 }) // Show ending soonest first
     .lean();
 
-    // Map through products and fetch the highest bid for each
-    const formattedListings = await Promise.all(activeProducts.map(async (product) => {
-        const highestBid = await Bid.findOne({ product: product._id })
-            .sort({ amount: -1 })
-            .lean();
-
-        const bidCount = await Bid.countDocuments({ product: product._id });
-
-        return {
-            id: product._id,
-            title: product.name,
-            startingPrice: product.startingPrice,
-            currentBid: highestBid ? highestBid.amount : product.startingPrice,
-            bidCount: bidCount,
-            endTime: product.endingDate,
-            image: product.mainImage || 'https://via.placeholder.com/200'
-        };
+    return activeAuctions.map(a => ({
+        id: a._id,
+        title: a.title,
+        startingPrice: a.startingPrice,
+        currentPrice: a.currentPrice,
+        bidCount: a.bidCount,
+        endTime: a.endTime,
+        category: a.category,
+        image: a.images?.[0] || 'https://via.placeholder.com/200'
     }));
-
-    return formattedListings;
 };
 
 export const getSellerActivityService = async (sellerId) => {
-    // Fetch products belonging to the seller
-    const sellerProducts = await Product.find({ seller: sellerId }).select('_id name');
-    const productIds = sellerProducts.map(p => p._id);
-    const productMap = sellerProducts.reduce((acc, curr) => {
-        acc[curr._id.toString()] = curr.name;
+    // Fetch latest bids on seller's products
+    const sellerAuctions = await Auction.find({ seller: sellerId }).select('_id title').lean();
+    const auctionIds = sellerAuctions.map(a => a._id);
+    const auctionMap = sellerAuctions.reduce((acc, curr) => {
+        acc[curr._id.toString()] = curr.title;
         return acc;
     }, {});
 
-    // Fetch latest bids on these products
-    const recentBids = await Bid.find({ product: { $in: productIds } })
+    const recentBids = await Bid.find({ auction: { $in: auctionIds } })
         .populate('bidder', 'firstName')
         .sort({ createdAt: -1 })
-        .limit(6)
+        .limit(8)
         .lean();
 
-    return recentBids.map(bid => {
-        return {
-            id: bid._id,
-            type: bid.status === 'won' ? 'sale' : 'bid',
-            message: bid.status === 'won' 
-                ? `Sale completed for ${productMap[bid.product.toString()]} at $${bid.amount}`
-                : `New bid of $${bid.amount} on ${productMap[bid.product.toString()]} by ${bid.bidder?.firstName || 'User'}`,
-            time: bid.createdAt
-        };
-    });
+    return recentBids.map(bid => ({
+        id: bid._id,
+        type: bid.status === 'won' ? 'sale' : 'bid',
+        message: bid.status === 'won' 
+            ? `Sale completed for ${auctionMap[bid.auction.toString()]} at $${bid.amount}`
+            : `New bid of $${bid.amount} on ${auctionMap[bid.auction.toString()]} by ${bid.bidder?.firstName || 'User'}`,
+        time: bid.createdAt
+    }));
 };
 
 export const getSellerInsightsService = async (sellerId) => {

@@ -28,7 +28,7 @@ export const resolveEndedAuctions = async () => {
                         { $set: { status: 'outbid' } }
                     );
 
-                    highestBid.status = 'winning'; 
+                    highestBid.status = 'won'; 
                     await highestBid.save();
 
                     // Create Order for the winner (Expires in 48 hours)
@@ -75,7 +75,7 @@ export const processExpiredOrders = async () => {
         });
 
         for (const order of expiredOrders) {
-            // 1. Suspend the delinquent buyer
+            // 1. Blacklist/Suspend the delinquent buyer
             await User.findByIdAndUpdate(order.buyer, { status: 'suspended' });
 
             // Notify delinquent buyer

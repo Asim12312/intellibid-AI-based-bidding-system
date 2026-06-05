@@ -2,16 +2,21 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useBehaviorTracker } from '@/hooks/useBehaviorTracker';
-import { Clock, Heart, ArrowRight } from 'lucide-react';
+import { useWatchlistStore } from '@/store/watchlistStore';
+import { Clock, Heart, ArrowRight, Timer, Gavel, Eye } from 'lucide-react';
 
 export default function AuctionCard({ auction }) {
     const { trackViewOnce, trackEvent } = useBehaviorTracker(auction._id);
+    const { isWatched, toggleWatchlist, initialized, fetchWatchlist } = useWatchlistStore();
     const cardRef = useRef(null);
     const [timeLeft, setTimeLeft] = useState('');
     const [isUrgent, setIsUrgent] = useState(false);
 
     useEffect(() => {
-        // Track view when 60% visible
+        if (!initialized) fetchWatchlist();
+    }, [initialized, fetchWatchlist]);
+
+    useEffect(() => {
         const observer = new IntersectionObserver(
             ([entry]) => {
                 if (entry.isIntersecting) {
@@ -30,98 +35,117 @@ export default function AuctionCard({ auction }) {
             const diff = new Date(auction.endTime).getTime() - Date.now();
             if (diff <= 0) return 'Ended';
 
-            const hours = Math.floor(diff / (1000 * 60 * 60));
-            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const h = Math.floor(diff / (1000 * 60 * 60));
+            const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const s = Math.floor((diff % (1000 * 60)) / 1000);
             
-            setIsUrgent(hours < 24);
+            setIsUrgent(h < 24);
 
-            if (hours > 24) return `${Math.floor(hours / 24)}d left`;
-            if (hours > 0) return `${hours}h ${minutes}m left`;
-            return `${minutes}m left`;
+            if (h > 24) return `${Math.floor(h / 24)}d ${h % 24}h`;
+            if (h > 0) return `${h}h ${m}m ${s}s`;
+            return `${m}m ${s}s`;
         };
 
         setTimeLeft(calculateTimeLeft());
-        const timer = setInterval(() => setTimeLeft(calculateTimeLeft()), 60000);
+        const timer = setInterval(() => setTimeLeft(calculateTimeLeft()), 1000);
         return () => clearInterval(timer);
     }, [auction.endTime]);
 
     return (
         <motion.div
             ref={cardRef}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="group relative flex flex-col bg-white border-[3px] border-[var(--ink)] rounded-2xl overflow-hidden shadow-[4px_4px_0_0_var(--ink)] hover:translate-y-[-4px] hover:shadow-[6px_6px_0_0_var(--ink)] transition-all"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            whileHover={{ y: -8, rotate: 0.5 }}
+            className="group relative flex flex-col bg-white border-[3px] border-[var(--ink)] rounded-[2rem] overflow-hidden shadow-[8px_8px_0_0_var(--ink)] hover:shadow-[12px_12px_0_0_var(--ink)] transition-all"
         >
-            {/* Urgency Badge */}
+            {/* Status Overlay */}
             {isUrgent && timeLeft !== 'Ended' && (
-                <div className="absolute top-3 left-3 z-10 bg-[var(--hotpink)] text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border-[2px] border-[var(--ink)] shadow-[2px_2px_0_0_var(--ink)] flex items-center gap-1 animate-pulse">
-                    <Clock size={12} /> Ending Soon
+                <div className="absolute top-4 left-4 z-20 bg-[var(--hotpink)] text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border-[2px] border-[var(--ink)] shadow-[3px_3px_0_0_var(--ink)] flex items-center gap-2 animate-pulse">
+                    <Timer size={14} strokeWidth={3} /> Ending Soon
                 </div>
             )}
 
-            {/* Image */}
-            <div className="relative aspect-square border-b-[3px] border-[var(--ink)] bg-gray-100 overflow-hidden">
+            {/* Image Container */}
+            <div className="relative aspect-[1/1] border-b-[3px] border-[var(--ink)] bg-gray-50 overflow-hidden">
                 {auction.images && auction.images[0] ? (
                     <img 
                         src={auction.images[0]} 
                         alt={auction.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
                         loading="lazy"
                     />
                 ) : (
-                    <div className="w-full h-full flex items-center justify-center font-display text-4xl opacity-10">
-                        No Image
+                    <div className="w-full h-full flex items-center justify-center font-display text-5xl opacity-10">
+                        📦
                     </div>
                 )}
                 
+                {/* Gradient overlay on hover */}
+                <div className="absolute inset-0 bg-gradient-to-t from-[var(--ink)]/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
                 <button 
                     onClick={(e) => {
                         e.preventDefault();
-                        trackEvent('watchlist_add');
-                        // TODO: Implement actual watchlist toggle logic in store/backend
+                        const currentlyWatched = isWatched(auction._id);
+                        trackEvent(currentlyWatched ? 'watchlist_remove' : 'watchlist_add');
+                        toggleWatchlist(auction._id);
                     }}
-                    className="absolute top-3 right-3 p-2 bg-white rounded-full border-[2px] border-[var(--ink)] shadow-[2px_2px_0_0_var(--ink)] hover:bg-[var(--hotpink)] hover:text-white transition-colors"
+                    className={`absolute top-4 right-4 z-20 h-11 w-11 flex items-center justify-center rounded-full border-[3px] border-[var(--ink)] shadow-[3px_3px_0_0_var(--ink)] transition-all active:scale-90 ${
+                        isWatched(auction._id) 
+                            ? 'bg-[var(--hotpink)] text-white' 
+                            : 'bg-white text-[var(--ink)] hover:bg-[var(--hotpink)] hover:text-white'
+                    }`}
                 >
-                    <Heart size={16} />
+                    <Heart size={20} strokeWidth={3} className={isWatched(auction._id) ? "fill-white" : ""} />
                 </button>
             </div>
 
-            {/* Content */}
-            <div className="p-4 flex flex-col flex-1">
-                <div className="flex justify-between items-start mb-2 gap-2">
-                    <h3 className="font-display font-black text-lg leading-tight line-clamp-2">
+            {/* Content Area */}
+            <div className="p-6 flex flex-col flex-1">
+                <div className="mb-4">
+                    <div className="flex items-center gap-2 mb-2">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-[var(--ink)]/40 bg-[var(--background)] px-2 py-1 rounded-md border-[1.5px] border-[var(--ink)]">
+                            {auction.category}
+                        </span>
+                        {auction.bidCount > 0 && (
+                            <span className="flex items-center gap-1 text-[10px] font-black uppercase text-[var(--electric)]">
+                                <Gavel size={12} strokeWidth={3} /> {auction.bidCount} Bids
+                            </span>
+                        )}
+                    </div>
+                    <h3 className="font-display font-black text-xl leading-[1.1] line-clamp-2 group-hover:text-[var(--electric)] transition-colors">
                         {auction.title}
                     </h3>
                 </div>
 
-                <p className="text-xs font-bold uppercase tracking-widest text-[var(--ink)] opacity-60 mb-4 bg-gray-100 w-fit px-2 py-1 rounded-md border-[1px] border-[var(--ink)]">
-                    {auction.category}
-                </p>
+                <div className="mt-auto space-y-5">
+                    {/* Bidding Stats Block */}
+                    <div className="flex items-center justify-between bg-[var(--background)] border-[3px] border-[var(--ink)] p-4 rounded-2xl shadow-[4px_4px_0_0_var(--ink)]">
+                        <div>
+                            <p className="text-[10px] font-black uppercase tracking-[0.1em] opacity-40 mb-1">Current Price</p>
+                            <p className="font-display text-3xl font-black text-[var(--acid)] drop-shadow-[2px_2px_0_var(--ink)]">
+                                ${auction.currentPrice.toLocaleString()}
+                            </p>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-[10px] font-black uppercase tracking-[0.1em] opacity-40 mb-1 flex items-center justify-end gap-1">
+                                <Clock size={12} strokeWidth={3} /> Ends In
+                            </p>
+                            <p className={`font-display text-lg font-black ${isUrgent ? 'text-[var(--hotpink)]' : 'text-[var(--ink)]'}`}>
+                                {timeLeft}
+                            </p>
+                        </div>
+                    </div>
 
-                <div className="mt-auto flex items-end justify-between">
-                    <div>
-                        <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Current Bid</p>
-                        <p className="font-display text-2xl font-black text-[var(--acid)] drop-shadow-[1px_1px_0_var(--ink)]">
-                            ${auction.currentPrice.toLocaleString()}
-                        </p>
-                    </div>
-                    <div className="text-right">
-                        <p className="text-[10px] font-black uppercase tracking-widest opacity-60 flex items-center justify-end gap-1">
-                            <Clock size={10} /> Time Left
-                        </p>
-                        <p className={`font-bold text-sm ${isUrgent ? 'text-[var(--hotpink)]' : ''}`}>
-                            {timeLeft}
-                        </p>
-                    </div>
+                    <Link 
+                        href={`/auction/${auction._id}`}
+                        onClick={() => trackEvent('item_view', { source: 'feed_click' })}
+                        className="w-full bg-[var(--ink)] text-white py-4 rounded-2xl border-[3px] border-[var(--ink)] font-display text-sm font-black uppercase tracking-widest flex items-center justify-center gap-3 shadow-[4px_4px_0_0_var(--electric)] hover:-translate-y-1 hover:shadow-[6px_6px_0_0_var(--electric)] active:translate-y-0 transition-all"
+                    >
+                        Place A Bid <ArrowRight size={18} strokeWidth={3} />
+                    </Link>
                 </div>
-
-                <Link 
-                    href={`/auction/${auction._id}`}
-                    onClick={() => trackEvent('item_view', { source: 'feed_click' })}
-                    className="mt-4 w-full bg-[var(--electric)] text-white py-3 rounded-xl border-[2px] border-[var(--ink)] font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 hover:bg-[var(--ink)] hover:text-[var(--acid)] transition-colors"
-                >
-                    View Details <ArrowRight size={14} />
-                </Link>
             </div>
         </motion.div>
     );

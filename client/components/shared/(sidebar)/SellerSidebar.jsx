@@ -4,18 +4,27 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import ModeSwitcher from "@/components/shared/ModeSwitcher";
+import { useMessagesStore } from "@/store/messagesStore";
+import { useAuthStore } from "@/store/authStore";
 
-const items = [
+const baseItems = [
     { emoji: "📊", label: "Dashboard", color: "var(--acid)", textColor: "var(--ink)", href: "/seller/dashboard" },
     { emoji: "📦", label: "My Products", color: "var(--electric)", textColor: "#fff", href: "/seller/products" },
-    { emoji: "➕", label: "Create Listing", color: "var(--hotpink)", textColor: "#fff", href: "/seller/listings/create" },
-    { emoji: "💬", label: "Messages", color: "var(--sunset)", textColor: "#fff", href: "/chat" },
-    { emoji: "👤", label: "Profile", color: "var(--acid)", textColor: "var(--ink)", href: "/profile" },
+    { emoji: "➕", label: "Create", color: "var(--hotpink)", textColor: "#fff", href: "/seller/create" },
+    { emoji: "💬", label: "Messages", color: "var(--electric)", textColor: "#fff", href: "/chat" },
 ];
 
 export default function SellerSidebar() {
     const [open, setOpen] = useState(false);
     const pathname = usePathname();
+    const totalUnread = useMessagesStore(s => s.totalUnread);
+    const { user } = useAuthStore();
+    
+    const items = [
+        ...baseItems,
+        { emoji: "👤", label: "Profile", color: "var(--sunset)", textColor: "#fff", href: "/profile" },
+    ];
 
     return (
         <>
@@ -47,20 +56,22 @@ export default function SellerSidebar() {
                 <nav className="flex flex-1 flex-col gap-1 overflow-y-hidden p-2 w-full">
                     {items.map((it) => {
                         const isActive = pathname === it.href || (pathname && pathname.startsWith(it.href) && it.href !== '/seller/dashboard');
+                        const showBadge = it.href === '/chat' && totalUnread > 0;
                         return (
                             <Link key={it.label} href={it.href}>
                                 <motion.div
                                     whileHover={{ x: 4, scale: 1.03 }}
                                     whileTap={{ scale: 0.96 }}
-                                    className={`group flex items-center gap-3 rounded-2xl px-2 py-1.5 transition-all ${isActive ? "shadow-[4px_4px_0_0_var(--ink)]" : "hover:shadow-[3px_3px_0_0_var(--ink)]"
-                                        }`}
+                                    className={`group flex items-center gap-3 rounded-2xl px-2 py-1.5 transition-all ${isActive ? "shadow-[4px_4px_0_0_var(--ink)]" : "hover:shadow-[3px_3px_0_0_var(--ink)]"}`}
                                     style={{ background: isActive ? it.color : "transparent", border: isActive ? "3px solid var(--ink)" : "3px solid transparent" }}
                                 >
-                                    <span
-                                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-[3px] border-[var(--ink)] text-xl shadow-[2px_2px_0_0_var(--ink)] transition-all group-hover:shadow-[4px_4px_0_0_var(--ink)] group-hover:-translate-y-0.5"
-                                        style={{ background: it.color }}
-                                    >
+                                    <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-[3px] border-[var(--ink)] text-xl shadow-[2px_2px_0_0_var(--ink)] transition-all group-hover:shadow-[4px_4px_0_0_var(--ink)] group-hover:-translate-y-0.5" style={{ background: it.color }}>
                                         {it.emoji}
+                                        {showBadge && (
+                                            <span className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full border-[2px] border-white bg-[var(--hotpink)] font-display text-[9px] font-black text-white">
+                                                {totalUnread > 9 ? '9+' : totalUnread}
+                                            </span>
+                                        )}
                                     </span>
                                     <AnimatePresence>
                                         {open && (
@@ -72,6 +83,11 @@ export default function SellerSidebar() {
                                                 style={{ color: isActive ? it.textColor : "var(--ink)" }}
                                             >
                                                 {it.label}
+                                                {showBadge && (
+                                                    <span className="ml-2 rounded-full border-[2px] border-[var(--ink)] bg-[var(--hotpink)] px-1.5 py-0.5 text-[9px] font-black text-white">
+                                                        {totalUnread}
+                                                    </span>
+                                                )}
                                             </motion.span>
                                         )}
                                     </AnimatePresence>
@@ -80,6 +96,9 @@ export default function SellerSidebar() {
                         );
                     })}
                 </nav>
+
+                {/* Mode Switcher */}
+                <ModeSwitcher sidebarOpen={open} />
 
                 {/* Bottom area for Signout */}
                 <div className="w-full p-2 mt-auto border-t-[3px] border-[var(--ink)]">

@@ -49,7 +49,7 @@ function TopBar() {
         <span className="hidden md:inline">⚡ New: AI Auction Agent — try “find me a vintage Rolex”</span>
         <div className="flex items-center gap-6">
           <a href="/login" className="hover:text-[var(--acid)] transition-colors">Login</a>
-          <a href="/signup" className="rounded-full border-2 border-[var(--acid)] bg-[var(--acid)] px-4 py-1 text-[var(--ink)] hover:bg-transparent hover:text-[var(--acid)] transition-colors">Sign up</a>
+          <a href="/register" className="rounded-full border-2 border-[var(--acid)] bg-[var(--acid)] px-4 py-1 text-[var(--ink)] hover:bg-transparent hover:text-[var(--acid)] transition-colors">Sign up</a>
         </div>
       </div>
     </div>
@@ -272,7 +272,7 @@ function Categories() {
         <Reveal>
           <div className="mb-10 flex items-end justify-between">
             <h2 className="font-display text-4xl font-black tracking-tighter md:text-5xl">Browse by vibe.</h2>
-            <a href="#" className="hidden font-display text-sm font-black uppercase underline decoration-[3px] underline-offset-8 md:inline">All categories →</a>
+            <a href="/discover" className="hidden font-display text-sm font-black uppercase underline decoration-[3px] underline-offset-8 md:inline">All categories →</a>
           </div>
         </Reveal>
         <div className="grid grid-cols-2 gap-4 md:grid-cols-6">
@@ -598,7 +598,10 @@ function Pricing() {
                     </li>
                   ))}
                 </ul>
-                <button className="mt-8 w-full rounded-full border-[3px] border-[var(--ink)] bg-[var(--ink)] px-5 py-3 font-display text-sm font-black uppercase text-white shadow-[4px_4px_0_0_var(--ink)] transition-transform hover:-translate-y-0.5">
+                <button 
+                  onClick={() => window.location.href = '/register'}
+                  className="mt-8 w-full rounded-full border-[3px] border-[var(--ink)] bg-[var(--ink)] px-5 py-3 font-display text-sm font-black uppercase text-white shadow-[4px_4px_0_0_var(--ink)] transition-transform hover:-translate-y-0.5"
+                >
                   {p.cta}
                 </button>
               </motion.div>
@@ -675,7 +678,7 @@ function CTA() {
             </h2>
             <p className="mt-6 max-w-xl text-white/80 md:text-lg">Join 120,000+ collectors and creators flipping the auction game.</p>
             <div className="mt-10 flex flex-wrap gap-4">
-              <MagneticButton bg="var(--acid)" onClick={() => window.location.href = '/signup'}>Create free account</MagneticButton>
+              <MagneticButton bg="var(--acid)" onClick={() => window.location.href = '/register'}>Create free account</MagneticButton>
               <MagneticButton bg="var(--hotpink)" onClick={() => window.location.href = '/login'}>Browse auctions</MagneticButton>
             </div>
           </div>

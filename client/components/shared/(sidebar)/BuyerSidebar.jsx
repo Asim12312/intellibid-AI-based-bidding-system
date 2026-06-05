@@ -4,19 +4,26 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import ModeSwitcher from "@/components/shared/ModeSwitcher";
+import { useAuthStore } from "@/store/authStore";
 
-const items = [
+const baseItems = [
     { emoji: "🏠", label: "Dashboard", color: "var(--electric)", textColor: "#fff", href: "/dashboard" },
     { emoji: "🔍", label: "Discover", color: "var(--acid)", textColor: "var(--ink)", href: "/discover" },
     { emoji: "🔨", label: "My Bids", color: "var(--sunset)", textColor: "#fff", href: "/bids" },
     { emoji: "🤖", label: "AI Picks", color: "var(--hotpink)", textColor: "#fff", href: "/buyer/ai-picks" },
     { emoji: "💬", label: "Messages", color: "var(--electric)", textColor: "#fff", href: "/chat" },
-    { emoji: "👤", label: "Profile", color: "var(--acid)", textColor: "var(--ink)", href: "/profile" },
 ];
 
 export default function BuyerSidebar() {
     const [open, setOpen] = useState(false);
     const pathname = usePathname();
+    const { user } = useAuthStore();
+    
+    const items = [
+        ...baseItems,
+        { emoji: "👤", label: "Profile", color: "var(--acid)", textColor: "var(--ink)", href: "/profile" },
+    ];
 
     return (
         <>
@@ -81,6 +88,9 @@ export default function BuyerSidebar() {
                         );
                     })}
                 </nav>
+
+                {/* Mode Switcher */}
+                <ModeSwitcher sidebarOpen={open} />
 
                 {/* Bottom area for Signout */}
                 <div className="w-full p-2 mt-auto border-t-[3px] border-[var(--ink)]">

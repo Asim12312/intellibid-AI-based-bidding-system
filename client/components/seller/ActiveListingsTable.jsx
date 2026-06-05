@@ -1,15 +1,50 @@
 import { motion } from "framer-motion";
-import { Clock, Eye, TrendingUp, MoreVertical } from "lucide-react";
+import { Clock, Eye, TrendingUp, MoreVertical, Timer, ExternalLink } from "lucide-react";
 import Link from "next/link";
+import { useState, useEffect } from "react";
+
+function CountdownTimer({ endTime }) {
+  const [timeLeft, setTimeLeft] = useState("");
+  const [isUrgent, setIsUrgent] = useState(false);
+
+  useEffect(() => {
+    const calculate = () => {
+      const diff = new Date(endTime).getTime() - Date.now();
+      if (diff <= 0) return "Ended";
+
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+
+      setIsUrgent(h < 24);
+
+      if (h > 24) return `${Math.floor(h / 24)}d ${h % 24}h`;
+      if (h > 0) return `${h}h ${m}m ${s}s`;
+      return `${m}m ${s}s`;
+    };
+
+    setTimeLeft(calculate());
+    const timer = setInterval(() => setTimeLeft(calculate()), 1000);
+    return () => clearInterval(timer);
+  }, [endTime]);
+
+  return (
+    <div className={`flex items-center gap-2 text-xs font-black px-3 py-1.5 rounded-xl border-[2px] border-[var(--ink)] shadow-[2px_2px_0_0_var(--ink)] transition-colors
+      ${isUrgent ? 'bg-[var(--hotpink)] text-white' : 'bg-[var(--acid)] text-[var(--ink)]'}`}>
+      <Timer size={14} strokeWidth={3} className={isUrgent ? 'animate-pulse' : ''} />
+      {timeLeft}
+    </div>
+  );
+}
 
 export default function ActiveListingsTable({ listings }) {
   if (!listings || listings.length === 0) {
     return (
-      <div className="bg-white border-[3px] border-[var(--ink)] rounded-2xl p-8 text-center shadow-[4px_4px_0_0_var(--ink)]">
-        <div className="text-4xl mb-4">📦</div>
-        <h3 className="font-display text-xl font-black uppercase tracking-tight mb-2">No Active Listings</h3>
-        <p className="font-medium opacity-70 mb-6">You aren't selling anything right now.</p>
-        <Link href="/seller/products/create" className="inline-flex items-center gap-2 bg-[var(--electric)] text-white px-6 py-3 rounded-xl border-[3px] border-[var(--ink)] font-bold uppercase text-sm shadow-[2px_2px_0_0_var(--ink)] hover:translate-y-[-2px] hover:shadow-[4px_4px_0_0_var(--ink)] transition-all">
+      <div className="brutal bg-white p-12 text-center">
+        <div className="text-7xl mb-6">📦</div>
+        <h3 className="font-display text-2xl font-black uppercase tracking-tight mb-2">No Active Listings</h3>
+        <p className="font-medium opacity-60 mb-8 max-w-xs mx-auto text-lg leading-tight">Your auction stage is empty. Let's get something live!</p>
+        <Link href="/seller/create" className="inline-flex items-center gap-3 bg-[var(--electric)] text-white px-8 py-4 rounded-2xl border-[3px] border-[var(--ink)] font-display text-base font-black uppercase tracking-widest shadow-[4px_4px_0_0_var(--ink)] hover:-translate-y-1 hover:shadow-[6px_6px_0_0_var(--ink)] active:translate-y-0 transition-all">
           Create Listing
         </Link>
       </div>
@@ -17,57 +52,71 @@ export default function ActiveListingsTable({ listings }) {
   }
 
   return (
-    <div className="bg-white border-[3px] border-[var(--ink)] rounded-2xl overflow-hidden shadow-[4px_4px_0_0_var(--ink)]">
-      <div className="p-5 border-b-[3px] border-[var(--ink)] bg-[var(--background)] flex justify-between items-center">
-        <h2 className="font-display text-xl font-black uppercase tracking-tighter">Active Listings</h2>
-        <Link href="/seller/products" className="text-sm font-bold underline decoration-2 underline-offset-4 hover:text-[var(--electric)] transition-colors">
-          Manage All
+    <div className="brutal bg-white overflow-hidden">
+      <div className="p-6 border-b-[3px] border-[var(--ink)] bg-[var(--background)] flex justify-between items-center">
+        <div className="flex items-center gap-3">
+            <div className="p-2 bg-[var(--acid)] border-[2px] border-[var(--ink)] rounded-lg">
+                <TrendingUp size={20} strokeWidth={3} />
+            </div>
+            <h2 className="font-display text-2xl font-black uppercase tracking-tighter">Live Performance</h2>
+        </div>
+        <Link href="/seller/products" className="group flex items-center gap-2 text-sm font-black uppercase tracking-widest bg-white border-[2px] border-[var(--ink)] px-4 py-2 rounded-xl shadow-[2px_2px_0_0_var(--ink)] hover:-translate-y-0.5 hover:shadow-[4px_4px_0_0_var(--ink)] transition-all">
+          Manage All <ExternalLink size={14} strokeWidth={3} className="group-hover:translate-x-0.5 transition-transform" />
         </Link>
       </div>
       
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="border-b-[3px] border-[var(--ink)] bg-gray-50">
-              <th className="p-4 font-display text-xs font-black uppercase tracking-widest text-gray-500">Product</th>
-              <th className="p-4 font-display text-xs font-black uppercase tracking-widest text-gray-500">Current Highest Bid</th>
-              <th className="p-4 font-display text-xs font-black uppercase tracking-widest text-gray-500">Activity</th>
-              <th className="p-4 font-display text-xs font-black uppercase tracking-widest text-gray-500">Time Left</th>
-              <th className="p-4 font-display text-xs font-black uppercase tracking-widest text-gray-500 text-right">Actions</th>
+            <tr className="border-b-[3px] border-[var(--ink)] bg-[var(--background)]/50">
+              <th className="p-6 font-display text-[10px] font-black uppercase tracking-[0.2em] text-[var(--ink)]/40">Product Detail</th>
+              <th className="p-6 font-display text-[10px] font-black uppercase tracking-[0.2em] text-[var(--ink)]/40">Highest Bid</th>
+              <th className="p-6 font-display text-[10px] font-black uppercase tracking-[0.2em] text-[var(--ink)]/40 text-center">Engagement</th>
+              <th className="p-6 font-display text-[10px] font-black uppercase tracking-[0.2em] text-[var(--ink)]/40">Time Remaining</th>
+              <th className="p-6 font-display text-[10px] font-black uppercase tracking-[0.2em] text-[var(--ink)]/40 text-right">Options</th>
             </tr>
           </thead>
           <tbody>
             {listings.map((item, i) => (
               <motion.tr 
                 key={item.id}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.1 }}
-                className="border-b-[3px] border-[var(--ink)] last:border-0 hover:bg-gray-50 transition-colors"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.05 }}
+                className="border-b-[2px] border-[var(--ink)]/10 last:border-0 hover:bg-[var(--acid)]/5 transition-colors group"
               >
-                <td className="p-4">
-                  <div className="flex items-center gap-4">
-                    <img src={item.image} alt={item.title} className="w-12 h-12 rounded-lg border-[2px] border-[var(--ink)] object-cover bg-gray-100" />
-                    <span className="font-bold">{item.title}</span>
+                <td className="p-6">
+                  <Link href={`/auction/${item.id}`} className="flex items-center gap-5">
+                    <div className="relative shrink-0">
+                        <img src={item.image} alt={item.title} className="w-16 h-16 rounded-2xl border-[3px] border-[var(--ink)] object-cover bg-white shadow-[3px_3px_0_0_var(--ink)] group-hover:shadow-[5px_5px_0_0_var(--ink)] group-hover:-translate-y-1 transition-all" />
+                    </div>
+                    <div className="flex flex-col">
+                        <span className="font-display font-black text-base leading-tight line-clamp-1 mb-1">{item.title}</span>
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--ink)]/40">ID: {item.id.toString().slice(-6).toUpperCase()}</span>
+                    </div>
+                  </Link>
+                </td>
+                <td className="p-6">
+                  <div className="flex flex-col">
+                    <span className="font-display text-2xl font-black text-[var(--electric)] drop-shadow-[1.5px_1.5px_0_var(--ink)]">
+                        ${item.currentBid.toLocaleString()}
+                    </span>
+                    <span className="text-[9px] font-black uppercase tracking-tighter text-[var(--ink)]/30">Start: ${item.startingPrice}</span>
                   </div>
                 </td>
-                <td className="p-4 font-bold text-[var(--acid)] drop-shadow-[1px_1px_0_var(--ink)] text-lg">
-                  ${item.currentBid.toLocaleString()}
-                </td>
-                <td className="p-4">
-                  <div className="flex items-center gap-4 text-sm font-bold opacity-80">
-                    <span className="flex items-center gap-1"><TrendingUp size={14} className="text-[var(--electric)]"/> {item.bidCount} Bids</span>
+                <td className="p-6">
+                  <div className="flex flex-col items-center gap-1">
+                    <div className="flex items-center gap-1.5 bg-white border-[2px] border-[var(--ink)] px-3 py-1 rounded-full text-xs font-black shadow-[2px_2px_0_0_var(--ink)]">
+                        <Gavel size={12} strokeWidth={3} className="text-[var(--hotpink)]" /> {item.bidCount} Bids
+                    </div>
                   </div>
                 </td>
-                <td className="p-4">
-                  <div className="flex items-center gap-2 text-sm font-bold bg-[var(--sunset)] text-white px-3 py-1.5 rounded-lg border-[2px] border-[var(--ink)] w-max shadow-[2px_2px_0_0_var(--ink)]">
-                    <Clock size={14} /> 
-                    {new Date(item.endTime).toLocaleDateString()}
-                  </div>
+                <td className="p-6">
+                  <CountdownTimer endTime={item.endTime} />
                 </td>
-                <td className="p-4 text-right">
-                    <button className="p-2 hover:bg-gray-200 rounded-lg transition-colors">
-                        <MoreVertical size={18} />
+                <td className="p-6 text-right">
+                    <button className="h-10 w-10 flex items-center justify-center hover:bg-[var(--ink)] hover:text-white border-[2px] border-transparent hover:border-[var(--ink)] rounded-xl transition-all">
+                        <MoreVertical size={20} strokeWidth={3} />
                     </button>
                 </td>
               </motion.tr>
@@ -77,4 +126,28 @@ export default function ActiveListingsTable({ listings }) {
       </div>
     </div>
   );
+}
+
+// Add Gavel icon for consistency
+function Gavel({ size, strokeWidth, className }) {
+    return (
+        <svg 
+            xmlns="http://www.w3.org/2000/svg" 
+            width={size} 
+            height={size} 
+            viewBox="0 0 24 24" 
+            fill="none" 
+            stroke="currentColor" 
+            strokeWidth={strokeWidth} 
+            strokeLinecap="round" 
+            strokeLinejoin="round" 
+            className={className}
+        >
+            <path d="m14.5 12.5-8 8a2.11 2.11 0 0 1-3-3l8-8" />
+            <path d="m16 16 6-6" />
+            <path d="m8 8 6-6" />
+            <path d="m9 7 8 8" />
+            <path d="m21 11-8-8" />
+        </svg>
+    );
 }

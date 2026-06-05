@@ -50,7 +50,7 @@ export default function MyBidsPage() {
         <div className="max-w-[1200px] mx-auto p-4 md:p-8 pb-24">
             <PlaceBidModal />
 
-            {/* Page Header */}
+            {/* Page Title */}
             <motion.div
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -63,25 +63,28 @@ export default function MyBidsPage() {
                     <h1 className="font-display text-4xl md:text-5xl font-black uppercase tracking-tighter">
                         My Bids
                     </h1>
-                    <p className="font-medium opacity-70 mt-1">
-                        Track your auction activity, monitor outbids, and review past wins.
-                    </p>
                 </div>
             </motion.div>
 
             <BidsHeader />
-            <BidsTabs />
+
+            {/* Sticky Tabs - Only the tabs will be sticky to save space and avoid hiding content */}
+            <div className="sticky top-0 z-40 bg-[var(--background)] py-4 -mx-4 px-4 md:-mx-8 md:px-8">
+                <BidsTabs />
+            </div>
 
             {/* Bid Grid */}
-            {bids.length === 0 && !loading ? (
-                <BidsEmpty tab={activeTab} />
-            ) : (
-                <div className="flex flex-col gap-4">
-                    {bids.map((bid) => (
-                        <BidCard key={bid._id} bid={bid} />
-                    ))}
-                </div>
-            )}
+            <div className="mt-4">
+                {bids.length === 0 && !loading ? (
+                    <BidsEmpty tab={activeTab} />
+                ) : (
+                    <div className="grid grid-cols-1 gap-6">
+                        {bids.map((bid) => (
+                            <BidCard key={bid._id} bid={bid} />
+                        ))}
+                    </div>
+                )}
+            </div>
 
             {/* Infinite Scroll Sentinel */}
             <div

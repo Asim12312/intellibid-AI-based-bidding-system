@@ -59,6 +59,26 @@ export const useListingStore = create((set, get) => ({
         };
     }),
 
+    setExistingImages: async (imageUrls) => {
+        try {
+            const files = await Promise.all(imageUrls.map(async (url, index) => {
+                const response = await fetch(url);
+                const blob = await response.blob();
+                // Extract original extension or fallback to jpg
+                const ext = url.split('.').pop().split('?')[0] || 'jpg';
+                return new File([blob], `relist-image-${index}.${ext}`, { type: blob.type });
+            }));
+            
+            const newPreviews = files.map(f => URL.createObjectURL(f));
+            set({
+                imageFiles: files,
+                imagePreviews: newPreviews
+            });
+        } catch (e) {
+            console.error("Failed to load existing images:", e);
+        }
+    },
+
     removeImage: (index) => set((s) => {
         const previews = [...s.imagePreviews];
         URL.revokeObjectURL(previews[index]);
@@ -89,29 +109,42 @@ export const useListingStore = create((set, get) => ({
         if (!title || !category) return;
         set({ aiLoading: true, aiError: null });
 
+        console.log('[AI Enhance] Starting enhancement for:', { title, category });
+
         try {
             const { api } = await import('@/lib/api');
             const res = await api('/api/seller/listings/ai-enhance', {
                 method: 'POST',
-                body: JSON.stringify({ rawTitle: title, category, imageUrls: imagePreviews }),
+                body: JSON.stringify({ 
+                    rawTitle: title, 
+                    category, 
+                    imageCount: imagePreviews.length 
+                }),
             });
 
-            if (res.success) {
+            console.log('[AI Enhance] API Response:', res);
+
+            if (res.success && res.data) {
                 set({
                     title: res.data.enhancedTitle || title,
                     description: res.data.description || '',
-                    tags: res.data.tags || [],
+                    tags: Array.isArray(res.data.tags) ? res.data.tags : [],
                     startingPrice: res.data.suggestedStartingPrice > 0 
                         ? String(res.data.suggestedStartingPrice) 
                         : get().startingPrice,
                     aiUsed: true,
                     aiLoading: false,
+                    aiError: null
                 });
+                console.log('[AI Enhance] State updated successfully');
             } else {
-                set({ aiError: res.message || 'AI enhancement failed', aiLoading: false });
+                const errMsg = res.message || 'AI enhancement failed to return data';
+                set({ aiError: errMsg, aiLoading: false });
+                console.error('[AI Enhance] Enhancement failed:', errMsg);
             }
         } catch (e) {
-            set({ aiError: e.message, aiLoading: false });
+            console.error('[AI Enhance] Error during enhancement:', e);
+            set({ aiError: e.message || 'Network error occurred', aiLoading: false });
         }
     },
 

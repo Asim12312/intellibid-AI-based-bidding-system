@@ -25,9 +25,40 @@ export default function Signup() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
+  const validateEmail = (email) => {
+    return String(email)
+      .toLowerCase()
+      .endsWith("@gmail.com");
+  };
+
+  const validateFirstName = (name) => {
+    const isOnlyDigits = /^\d+$/.test(name);
+    return !isOnlyDigits && name.length >= 2 && name.length <= 50;
+  };
+
+  const validateLastName = (name) => {
+    // Allows letters AND digits as requested
+    return name.length >= 2 && name.length <= 50;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+
+    // Frontend Validations
+    if (!validateFirstName(form.firstName)) {
+      setError("Please enter a valid first name (2-50 characters, no digits only)");
+      return;
+    }
+    if (!validateLastName(form.lastName)) {
+      setError("Please enter a valid last name (2-50 characters)");
+      return;
+    }
+    if (!validateEmail(form.email)) {
+      setError("Please enter a valid Gmail address (ending in @gmail.com)");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -54,7 +85,14 @@ export default function Signup() {
       });
 
       setUser(data.user);
-      router.push("/dashboard");
+      
+      const roleRoutes = {
+        buyer: "/dashboard",
+        seller: "/seller/dashboard",
+        admin: "/admin/dashboard",
+      };
+
+      router.push(roleRoutes[data.user.role] || "/dashboard");
     } catch (err) {
       setError(err.message || "Google signup failed");
     } finally {
@@ -162,6 +200,7 @@ export default function Signup() {
                     type="text"
                     placeholder="Jane"
                     value={form.firstName}
+                    maxLength={50}
                     onChange={(e) =>
                       setForm({ ...form, firstName: e.target.value })
                     }
@@ -186,6 +225,7 @@ export default function Signup() {
                     type="text"
                     placeholder="Doe"
                     value={form.lastName}
+                    maxLength={50}
                     onChange={(e) =>
                       setForm({ ...form, lastName: e.target.value })
                     }

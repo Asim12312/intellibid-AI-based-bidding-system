@@ -16,7 +16,8 @@ export const getBuyerStats = asyncHandler(async (req, res) => {
 });
 
 export const getMyBids = asyncHandler(async (req, res) => {
-    const { tab, page, limit } = req.query;
+    const { page, limit } = req.query;
+    const tab = req.params.tab || req.query.tab || 'active';
     const result = await getMyBidsService(req.user.id, tab, page, limit);
     res.status(200).json({ success: true, ...result });
 });

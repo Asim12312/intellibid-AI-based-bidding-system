@@ -63,6 +63,11 @@ export const loginService = async (data) => {
         throw new ApiError(401, 'Invalid email or password');
     }
 
+    // Check account status (Banned/Suspended)
+    if (user.status === 'suspended' || user.status === 'banned') {
+        throw new ApiError(403, `Your account is ${user.status}. Please contact support.`);
+    }
+
     // Generate JWT
     const token = generateToken(user);
 
@@ -90,7 +95,7 @@ export const googleLoginService = async (idToken) => {
         idToken,
         audience: process.env.GOOGLE_CLIENT_ID,
     });
-    
+
     const { email, sub: googleId, given_name, family_name, picture } = ticket.getPayload();
 
     let user = await User.findOne({ email });

@@ -31,9 +31,9 @@ export const createListingService = async (sellerId, data, imageUrls) => {
 };
 
 // ── AI Enhance listing content ────────────────────────────────────────────────
-export const getAiEnhancedContentService = async (rawTitle, category, imageUrls = []) => {
-    const imageContext = imageUrls.length > 0 
-        ? `The seller has uploaded ${imageUrls.length} image(s) of the item.` 
+export const getAiEnhancedContentService = async (rawTitle, category, imageCount = 0) => {
+    const imageContext = imageCount > 0 
+        ? `The seller has uploaded ${imageCount} image(s) of the item.` 
         : 'No images provided yet.';
 
     const prompt = `
@@ -46,39 +46,59 @@ A seller is creating a listing with:
 
 Generate a high-converting auction listing. Return ONLY a valid JSON object with these exact keys:
 {
-  "enhancedTitle": "A compelling, searchable title under 70 characters. Include brand, model, or key attribute if identifiable. No ALL CAPS.",
-  "description": "A 150-220 word professional auction description. Open with the most compelling fact about the item. Use short paragraphs. Mention condition, key features, and why a buyer should want this. End with a bid encouragement.",
-  "tags": ["5 to 8 lowercase single or two-word tags relevant to this item and category"],
-  "suggestedStartingPrice": 0
+  "enhancedTitle": "Compelling title under 70 chars",
+  "description": "Professional 150-220 word description",
+  "tags": ["tag1", "tag2", "tag3", "tag4", "tag5"],
+  "suggestedStartingPrice": 100
 }
 
 Rules:
-- suggestedStartingPrice must be a reasonable USD number based on typical market value for this category and item
-- tags must be an array of strings
-- description must not include the title verbatim
-- Return ONLY valid JSON. No markdown, no code blocks, no extra text.
+- Output MUST be valid JSON.
+- No markdown formatting.
+- No backticks.
+- No extra words.
+- suggestedStartingPrice must be a number.
+- tags must be an array of strings.
 `.trim();
 
     try {
         const model = genAI.getGenerativeModel({
-            model: 'gemini-2.5-flash',
-            generationConfig: { responseMimeType: 'application/json' }
+            model: 'gemini-1.5-flash',
+            generationConfig: { 
+                responseMimeType: 'application/json',
+                temperature: 0.7,
+                maxOutputTokens: 1024
+            }
         });
 
         const result = await model.generateContent(prompt);
-        const text = result.response.text();
-        const parsed = JSON.parse(text);
+        let text = result.response.text();
+        
+        // Sanitize response text
+        text = text.replace(/```json/g, '').replace(/```/g, '').trim();
 
-        // Validate required fields exist
+        let parsed;
+        try {
+            parsed = JSON.parse(text);
+        } catch (e) {
+            console.error('[AI Listing] JSON Parse failed. Raw text:', text);
+            // Attempt to fix common JSON errors if any
+            throw new Error('AI generated invalid data format.');
+        }
+
         return {
-            enhancedTitle: parsed.enhancedTitle || rawTitle,
-            description: parsed.description || '',
-            tags: Array.isArray(parsed.tags) ? parsed.tags : [],
+            enhancedTitle: (parsed.enhancedTitle || rawTitle).slice(0, 70),
+            description: parsed.description || 'Professional description unavailable.',
+            tags: Array.isArray(parsed.tags) ? parsed.tags.slice(0, 8) : [],
             suggestedStartingPrice: Number(parsed.suggestedStartingPrice) || 0,
         };
     } catch (error) {
         console.error('[AI Listing] Gemini enhancement failed:', error.message);
-        throw new Error('AI enhancement unavailable. Please fill in the details manually.');
+        // Provide a more helpful error message to the frontend
+        if (error.message.includes('API key')) {
+            throw new Error('AI service configuration error. Please contact support.');
+        }
+        throw new Error('AI enhancement temporarily unavailable. Please fill in details manually.');
     }
 };
 

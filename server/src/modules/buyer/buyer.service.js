@@ -4,23 +4,52 @@ import User from '../../models/user.model.js';
 import Auction from '../../models/auction.model.js';
 import { trackEventService } from '../events/events.service.js';
 import { broadcastBid } from '../../config/socket.js';
-export const getBuyerStatsService = async (userId) => {
-    // 1. Active Bids Count
-    const activeBidsCount = await Bid.countDocuments({
-        bidder: userId,
-        status: { $in: ['winning', 'outbid'] }
-    });
+import mongoose from 'mongoose';
 
-    // 2. Items Won Count
-    const itemsWonCount = await Bid.countDocuments({
-        bidder: userId,
-        status: 'won'
-    });
+export const getBuyerStatsService = async (userId) => {
+    const userIdObj = new mongoose.Types.ObjectId(userId);
+    const now = new Date();
+
+    // 1. Active Bids Count (Strictly: Bid is NOT 'won', Auction is 'active', and EndTime hasn't passed)
+    const activeBidsAggregation = await Bid.aggregate([
+        { 
+            $match: { 
+                bidder: userIdObj, 
+                status: { $in: ['winning', 'outbid'] } 
+            } 
+        },
+        {
+            $lookup: {
+                from: 'auctions',
+                localField: 'auction',
+                foreignField: '_id',
+                as: 'auctionData'
+            }
+        },
+        { $unwind: "$auctionData" },
+        { 
+            $match: { 
+                "auctionData.status": "active",
+                "auctionData.endTime": { $gt: now }
+            } 
+        },
+        { $group: { _id: "$auctionData._id" } },
+        { $count: "count" }
+    ]);
+    const activeBidsCount = activeBidsAggregation.length > 0 ? activeBidsAggregation[0].count : 0;
+
+    // 2. Items Won Count (Unique auctions where user has won)
+    const itemsWonAggregation = await Bid.aggregate([
+        { $match: { bidder: userIdObj, status: 'won' } },
+        { $group: { _id: "$auction" } },
+        { $count: "count" }
+    ]);
+    const itemsWonCount = itemsWonAggregation.length > 0 ? itemsWonAggregation[0].count : 0;
 
     // 3. Total Spent
     // Aggregate the sum of amounts for 'won' bids
     const spentAggregation = await Bid.aggregate([
-        { $match: { bidder: userId, status: 'won' } },
+        { $match: { bidder: userIdObj, status: 'won' } },
         { $group: { _id: null, total: { $sum: "$amount" } } }
     ]);
     const totalSpent = spentAggregation.length > 0 ? spentAggregation[0].total : 0;
@@ -38,39 +67,90 @@ export const getBuyerStatsService = async (userId) => {
 };
 
 export const getMyBidsService = async (userId, tab = 'active', page = 1, limit = 12) => {
-    let query = { bidder: userId };
+    const skip = (page - 1) * limit;
+    const userIdObj = new mongoose.Types.ObjectId(userId);
+
+    let matchQuery = { bidder: userIdObj };
 
     if (tab === 'active') {
-        query.status = { $in: ['winning', 'outbid'] };
+        matchQuery.status = { $in: ['winning', 'outbid'] };
     } else if (tab === 'won') {
-        query.status = 'won';
+        matchQuery.status = 'won';
     } else if (tab === 'lost') {
-        query.status = 'outbid';
-        // Needs a join/populate to check if auction is ended, but for now we filter post-query or assume outbid is lost if auction ended.
-        // A better approach is to query auctions that are ended where user bid and didn't win.
+        matchQuery.status = 'outbid';
     }
 
-    const skip = (page - 1) * limit;
+    // Use aggregation to group by auction and get the latest bid for each
+    const aggregationPipeline = [
+        { $match: matchQuery },
+        { $sort: { updatedAt: -1 } },
+        { 
+            $group: { 
+                _id: "$auction", 
+                latestBid: { $first: "$$ROOT" } 
+            } 
+        },
+        { $replaceRoot: { newRoot: "$latestBid" } },
+        {
+            $lookup: {
+                from: 'auctions',
+                localField: 'auction',
+                foreignField: '_id',
+                as: 'auction'
+            }
+        },
+        { $unwind: "$auction" },
+        // Filter based on auction status and time
+        {
+            $match: tab === 'active' 
+                ? { 
+                    "auction.status": "active",
+                    "auction.endTime": { $gt: new Date() }
+                  } 
+                : tab === 'lost' 
+                ? { 
+                    $or: [
+                        { "auction.status": { $ne: "active" } },
+                        { "auction.endTime": { $lte: new Date() } }
+                    ]
+                  }
+                : {}
+        },
+        { $sort: { updatedAt: -1 } }
+    ];
 
-    const bids = await Bid.find(query)
-        .populate('auction', 'title images endTime currentPrice status bidCount')
-        .sort({ updatedAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .lean();
+    // Execute count for pagination
+    const totalCountResult = await Bid.aggregate([
+        ...aggregationPipeline.slice(0, 7), // Up to the auction status filter
+        { $count: "count" }
+    ]);
+    const total = totalCountResult.length > 0 ? totalCountResult[0].count : 0;
 
-    // If tab === 'lost', filter out active auctions
-    let filteredBids = bids;
-    if (tab === 'lost') {
-        filteredBids = bids.filter(b => b.auction && b.auction.status !== 'active');
-    } else if (tab === 'active') {
-        filteredBids = bids.filter(b => b.auction && b.auction.status === 'active');
-    }
+    // Execute paginated results
+    const bids = await Bid.aggregate([
+        ...aggregationPipeline,
+        { $skip: skip },
+        { $limit: Number(limit) }
+    ]);
 
-    const total = await Bid.countDocuments(query); // Rough count, inaccurate for lost due to post-filter
+    const formattedBids = bids.map(b => ({
+        id: b._id,
+        amount: b.amount,
+        status: b.status,
+        updatedAt: b.updatedAt,
+        auction: {
+            id: b.auction._id,
+            title: b.auction.title,
+            images: b.auction.images,
+            endTime: b.auction.endTime,
+            currentPrice: b.auction.currentPrice,
+            status: b.auction.status,
+            bidCount: b.auction.bidCount
+        }
+    }));
 
     return {
-        bids: filteredBids,
+        bids: formattedBids,
         total,
         page: Number(page),
         hasMore: skip + bids.length < total
@@ -232,11 +312,39 @@ export const getWatchlistService = async (userId) => {
 import Order from '../../models/order.model.js';
 
 export const getMyOrdersService = async (userId) => {
-    const orders = await Order.find({ buyer: userId })
-        .populate('auction', 'title images')
-        .populate('seller', 'firstName lastName')
-        .sort({ createdAt: -1 })
-        .lean();
+    const userIdObj = new mongoose.Types.ObjectId(userId);
+    
+    // Group by auction to ensure unique entries per product
+    const orders = await Order.aggregate([
+        { $match: { buyer: userIdObj } },
+        { $sort: { createdAt: -1 } },
+        {
+            $group: {
+                _id: "$auction",
+                latestOrder: { $first: "$$ROOT" }
+            }
+        },
+        { $replaceRoot: { newRoot: "$latestOrder" } },
+        {
+            $lookup: {
+                from: 'auctions',
+                localField: 'auction',
+                foreignField: '_id',
+                as: 'auction'
+            }
+        },
+        { $unwind: "$auction" },
+        {
+            $lookup: {
+                from: 'users',
+                localField: 'seller',
+                foreignField: '_id',
+                as: 'seller'
+            }
+        },
+        { $unwind: "$seller" },
+        { $sort: { createdAt: -1 } }
+    ]);
 
     return orders;
 };
