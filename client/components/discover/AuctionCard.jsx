@@ -35,15 +35,14 @@ export default function AuctionCard({ auction }) {
             const diff = new Date(auction.endTime).getTime() - Date.now();
             if (diff <= 0) return 'Ended';
 
-            const h = Math.floor(diff / (1000 * 60 * 60));
-            const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-            const s = Math.floor((diff % (1000 * 60)) / 1000);
-            
-            setIsUrgent(h < 24);
+            const hours = Math.floor(diff / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
 
-            if (h > 24) return `${Math.floor(h / 24)}d ${h % 24}h`;
-            if (h > 0) return `${h}h ${m}m ${s}s`;
-            return `${m}m ${s}s`;
+            setIsUrgent(hours < 24);
+
+            if (hours > 24) return `${Math.floor(hours / 24)}d left`;
+            if (hours > 0) return `${hours}h ${minutes}m left`;
+            return `${minutes}m left`;
         };
 
         setTimeLeft(calculateTimeLeft());
@@ -69,8 +68,8 @@ export default function AuctionCard({ auction }) {
             {/* Image Container */}
             <div className="relative aspect-[1/1] border-b-[3px] border-[var(--ink)] bg-gray-50 overflow-hidden">
                 {auction.images && auction.images[0] ? (
-                    <img 
-                        src={auction.images[0]} 
+                    <img
+                        src={auction.images[0]}
                         alt={auction.title}
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
                         loading="lazy"
@@ -80,22 +79,18 @@ export default function AuctionCard({ auction }) {
                         📦
                     </div>
                 )}
-                
-                {/* Gradient overlay on hover */}
-                <div className="absolute inset-0 bg-gradient-to-t from-[var(--ink)]/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
-                <button 
+                <button
                     onClick={(e) => {
                         e.preventDefault();
                         const currentlyWatched = isWatched(auction._id);
                         trackEvent(currentlyWatched ? 'watchlist_remove' : 'watchlist_add');
                         toggleWatchlist(auction._id);
                     }}
-                    className={`absolute top-4 right-4 z-20 h-11 w-11 flex items-center justify-center rounded-full border-[3px] border-[var(--ink)] shadow-[3px_3px_0_0_var(--ink)] transition-all active:scale-90 ${
-                        isWatched(auction._id) 
-                            ? 'bg-[var(--hotpink)] text-white' 
+                    className={`absolute top-4 right-4 z-20 h-11 w-11 flex items-center justify-center rounded-full border-[3px] border-[var(--ink)] shadow-[3px_3px_0_0_var(--ink)] transition-all active:scale-90 ${isWatched(auction._id)
+                            ? 'bg-[var(--hotpink)] text-white'
                             : 'bg-white text-[var(--ink)] hover:bg-[var(--hotpink)] hover:text-white'
-                    }`}
+                        }`}
                 >
                     <Heart size={20} strokeWidth={3} className={isWatched(auction._id) ? "fill-white" : ""} />
                 </button>
@@ -138,12 +133,12 @@ export default function AuctionCard({ auction }) {
                         </div>
                     </div>
 
-                    <Link 
+                    <Link
                         href={`/auction/${auction._id}`}
                         onClick={() => trackEvent('item_view', { source: 'feed_click' })}
-                        className="w-full bg-[var(--ink)] text-white py-4 rounded-2xl border-[3px] border-[var(--ink)] font-display text-sm font-black uppercase tracking-widest flex items-center justify-center gap-3 shadow-[4px_4px_0_0_var(--electric)] hover:-translate-y-1 hover:shadow-[6px_6px_0_0_var(--electric)] active:translate-y-0 transition-all"
+                        className="mt-4 w-full bg-[var(--electric)] text-white py-3 rounded-xl border-[2px] border-[var(--ink)] font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 hover:bg-[var(--ink)] hover:text-[var(--acid)] transition-colors"
                     >
-                        Place A Bid <ArrowRight size={18} strokeWidth={3} />
+                        View Details <ArrowRight size={14} />
                     </Link>
                 </div>
             </div>

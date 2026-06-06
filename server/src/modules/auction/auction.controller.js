@@ -4,6 +4,9 @@ import Bid from '../../models/bid.model.js';
 import User from '../../models/user.model.js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
+const PRIMARY_MODEL = 'gemini-2.5-flash';
+const FALLBACK_MODEL = 'gemini-2.0-flash-lite';
+
 export const getAuctionById = asyncHandler(async (req, res) => {
     const { id } = req.params;
 
@@ -63,11 +66,7 @@ export const searchAuctions = asyncHandler(async (req, res) => {
     let searchTerms = [];
     if (q) {
         if (process.env.GEMINI_API_KEY) {
-            try {
-                const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-                const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-
-                const expansionPrompt = `You are a search query expansion engine for an e-commerce auction platform.
+            const expansionPrompt = `You are a search query expansion engine for an e-commerce auction platform.
 The user searched for: "${q}"
 
 Generate a compact JSON array of related keywords, synonyms, and related product terms that a seller might use when listing this item.
@@ -80,14 +79,30 @@ Rules:
 
 Example output for "watches for boys": ["watch","wristwatch","timepiece","boys","kids","children","youth","male","junior"]`;
 
+            const tryExpand = async (modelName) => {
+                const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+                const model = genAI.getGenerativeModel({ model: modelName });
                 const result = await model.generateContent(expansionPrompt);
                 const rawText = result.response.text().trim();
-                // Safely extract JSON array from response
                 const jsonMatch = rawText.match(/\[[\s\S]*?\]/);
                 if (jsonMatch) {
                     const parsed = JSON.parse(jsonMatch[0]);
                     if (Array.isArray(parsed)) {
-                        searchTerms = parsed.map(t => String(t).trim()).filter(Boolean);
+                        return parsed.map(t => String(t).trim()).filter(Boolean);
+                    }
+                }
+                return [];
+            };
+            try {
+                try {
+                    searchTerms = await tryExpand(PRIMARY_MODEL);
+                } catch (primaryErr) {
+                    const msg = primaryErr.message || '';
+                    if (msg.includes('429') || msg.includes('quota') || msg.includes('model output')) {
+                        console.warn('[Search] Primary model failed, using fallback:', msg.slice(0, 80));
+                        searchTerms = await tryExpand(FALLBACK_MODEL);
+                    } else {
+                        throw primaryErr;
                     }
                 }
             } catch (err) {

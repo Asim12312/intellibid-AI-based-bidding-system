@@ -9,7 +9,8 @@ import {
     getAiPicks,
     toggleWatchlist,
     getWatchlist,
-    getMyOrders
+    getMyOrders,
+    depositFunds
 } from './buyer.controller.js';
 
 const router = express.Router();
@@ -25,6 +26,9 @@ router.get('/recommendations', getRecommendations);
 router.get('/activity', getRecentActivity);
 router.get('/ai-picks', getAiPicks);
 router.get('/orders', getMyOrders);
+
+// Wallet
+router.post('/wallet/deposit', depositFunds);
 
 // Watchlist routes
 router.get('/watchlist', getWatchlist);

@@ -24,12 +24,23 @@ const deduplicate = (items) => {
 export const getFeedService = async (userId, { page = 1, category, minPrice, maxPrice } = {}) => {
     const offset = (page - 1) * FEED_SIZE;
 
+    // Build query filter
+    const filter = { status: 'active', endTime: { $gt: new Date() } };
+    if (category) filter.category = category;
+    if (minPrice || maxPrice) {
+        filter.currentPrice = {};
+        if (minPrice) filter.currentPrice.$gte = Number(minPrice);
+        if (maxPrice) filter.currentPrice.$lte = Number(maxPrice);
+    }
+
+    const totalActive = await Auction.countDocuments(filter);
+
     // Load user profile
     const userProfile = await UserProfile.findOne({ userId }).lean();
     const isColdStart = !userProfile || userProfile.interactionCount < COLD_START_THRESHOLD;
 
     if (isColdStart) {
-        return getColdStartFeed(FEED_SIZE, offset, { category, minPrice, maxPrice });
+        return getColdStartFeed(FEED_SIZE, offset, { category, minPrice, maxPrice }, totalActive);
     }
 
     // Get auction IDs user already bid on — exclude from feed
@@ -40,22 +51,14 @@ export const getFeedService = async (userId, { page = 1, category, minPrice, max
     });
     const excludedIds = new Set(biddedEvents.map(id => id.toString()));
 
-    // Build query filter
-    const filter = { status: 'active', endTime: { $gt: new Date() } };
-    if (category) filter.category = category;
-    if (minPrice || maxPrice) {
-        filter.currentPrice = {};
-        if (minPrice) filter.currentPrice.$gte = Number(minPrice);
-        if (maxPrice) filter.currentPrice.$lte = Number(maxPrice);
-    }
-
-    // Fetch candidates (more than feed size for scoring diversity)
+    // Fetch candidates with offset to allow infinite scroll
     const candidates = await Auction.find(filter)
-        .sort({ createdAt: -1 }) // Get newest items as candidates
+        .sort({ createdAt: -1 })
+        .skip(offset)
         .limit(FEED_SIZE * CANDIDATES_MULTIPLIER)
         .lean();
 
-    // Score every candidate
+    // Score candidates
     const scored = candidates
         .map(auction => ({ ...auction, feedScore: scoreAuctionForUser(auction, userProfile, excludedIds) }))
         .filter(a => a.feedScore >= 0)
@@ -68,29 +71,30 @@ export const getFeedService = async (userId, { page = 1, category, minPrice, max
 
     const personalized = scored.slice(0, nPersonal);
 
+    // Fetch urgent and fresh with offset
     const urgentItems = await Auction.find({
         ...filter,
         endTime: { $gt: new Date(), $lt: new Date(Date.now() + 6 * 3600000) },
-    }).limit(nUrgent).lean();
+    }).skip(Math.floor(offset * URGENCY_RATIO)).limit(nUrgent).lean();
 
     const freshCutoff = new Date(Date.now() - 24 * 3600000);
     const freshItems = await Auction.find({
         ...filter,
         createdAt: { $gte: freshCutoff },
-    }).sort({ createdAt: -1 }).limit(nFresh).lean();
+    }).sort({ createdAt: -1 }).skip(Math.floor(offset * FRESH_RATIO)).limit(nFresh).lean();
 
     const combined = deduplicate([...personalized, ...urgentItems, ...freshItems]);
-    const shuffled = softShuffle(combined);
+    const shuffled = softShuffle(combined).slice(0, FEED_SIZE);
 
     return {
-        items: shuffled.slice(offset, offset + FEED_SIZE),
+        items: shuffled,
         page,
-        hasMore: shuffled.length > offset + FEED_SIZE,
+        hasMore: offset + shuffled.length < totalActive,
         type: 'personalized',
     };
 };
 
-const getColdStartFeed = async (limit, offset, filters = {}) => {
+const getColdStartFeed = async (limit, offset, filters = {}, totalActive) => {
     const filter = { status: 'active', endTime: { $gt: new Date() } };
     if (filters.category) filter.category = filters.category;
 
@@ -124,5 +128,10 @@ const getColdStartFeed = async (limit, offset, filters = {}) => {
         { $limit: limit },
     ]);
 
-    return { items, page: Math.floor(offset / limit) + 1, hasMore: items.length === limit, type: 'trending' };
+    return { 
+        items, 
+        page: Math.floor(offset / limit) + 1, 
+        hasMore: offset + items.length < totalActive, 
+        type: 'trending' 
+    };
 };

@@ -6,11 +6,11 @@ import { useAuthStore } from '@/store/authStore';
 import FeedGrid from '@/components/discover/FeedGrid';
 import FeedFilters from '@/components/discover/FeedFilters';
 import ColdStartPicker from '@/components/discover/ColdStartPicker';
-import SearchBar from '@/components/discover/SearchBar';
-import AuctionCard from '@/components/discover/AuctionCard';
 import { Compass } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { api } from '@/lib/api';
+import SearchBar from '@/components/discover/SearchBar';
+import AuctionCard from '@/components/discover/AuctionCard';
 
 export default function DiscoverPage() {
     const { fetchNextPage, items, page, loading: feedLoading } = useFeedStore();
@@ -27,16 +27,13 @@ export default function DiscoverPage() {
         if (items.length === 0 && page === 1 && !feedLoading && !searchQuery) {
             fetchNextPage();
         }
-    }, [fetchNextPage, items.length, page, feedLoading, searchQuery]);
+    }, [fetchNextPage, items.length, page, feedLoading]);
 
     // Check if we need to show onboarding (new users)
     useEffect(() => {
-        // We use a simple local storage flag so we don't annoy them if they skipped it
         const hasSeenOnboarding = localStorage.getItem(`onboarding_seen_${user?._id}`);
-        
-        // If we fetched the feed and it's 'trending' (cold start), and they haven't seen the picker
         const isColdStartFeed = useFeedStore.getState().feedType === 'trending';
-        
+
         if (!hasSeenOnboarding && isColdStartFeed && !feedLoading && items.length > 0) {
             setShowOnboarding(true);
         }
@@ -79,7 +76,7 @@ export default function DiscoverPage() {
             {/* Page Header */}
             <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-4 mb-8">
                 <div>
-                    <motion.div 
+                    <motion.div
                         initial={{ opacity: 0, y: -20 }}
                         animate={{ opacity: 1, y: 0 }}
                         className="flex items-center gap-3 mb-2"

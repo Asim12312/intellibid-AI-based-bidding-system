@@ -2,6 +2,8 @@ import { create } from 'zustand';
 
 export const useAuthStore = create((set) => ({
     user: null,
+    viewMode: null,
+    setViewMode: (mode) => set({ viewMode: mode }),
     setUser: (user) => set({ user }),
     clearUser: () => set({ user: null }),
     checkAuth: async () => {

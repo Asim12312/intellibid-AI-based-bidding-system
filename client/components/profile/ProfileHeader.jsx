@@ -2,16 +2,16 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { 
-    Camera, ShieldCheck, ShoppingBag, Gavel, DollarSign, 
-    Tag, TrendingUp, MapPin, Globe, Phone, Star, Loader2
-} from "lucide-react";
+import { Camera, ShieldCheck, ShoppingBag, Gavel, DollarSign, Tag, TrendingUp, Store, Star, Loader2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
+import SellerOnboardingModal from "./SellerOnboardingModal";
+import Link from "next/link";
 
 export default function ProfileHeader({ user, stats }) {
     const setUser = useAuthStore((s) => s.setUser);
     const [uploading, setUploading] = useState(false);
+    const [isSellerModalOpen, setIsSellerModalOpen] = useState(false);
 
     const handleAvatarChange = async (e) => {
         const file = e.target.files[0];
@@ -51,11 +51,10 @@ export default function ProfileHeader({ user, stats }) {
                 <div className="absolute -bottom-10 left-20 h-40 w-40 rounded-full bg-[var(--hotpink)] opacity-15 blur-3xl" />
                 {/* Role label at top right */}
                 <div className="absolute top-4 right-4">
-                    <span className={`px-4 py-2 rounded-full border-[3px] border-[var(--ink)] text-xs font-black uppercase tracking-widest shadow-[3px_3px_0_0_var(--ink)] ${
-                        user.role === 'admin' ? 'bg-[var(--hotpink)] text-white' :
-                        user.role === 'seller' ? 'bg-[var(--acid)] text-[var(--ink)]' :
-                        'bg-[var(--electric)] text-white'
-                    }`}>
+                    <span className={`px-4 py-2 rounded-full border-[3px] border-[var(--ink)] text-xs font-black uppercase tracking-widest shadow-[3px_3px_0_0_var(--ink)] ${user.role === 'admin' ? 'bg-[var(--hotpink)] text-white' :
+                            user.role === 'seller' ? 'bg-[var(--acid)] text-[var(--ink)]' :
+                                'bg-[var(--electric)] text-white'
+                        }`}>
                         {user.role}
                     </span>
                 </div>
@@ -64,8 +63,8 @@ export default function ProfileHeader({ user, stats }) {
             {/* Profile Info Row */}
             <div className="flex flex-col md:flex-row items-start md:items-end gap-6 px-4 md:px-6 -mt-16 md:-mt-20 relative z-10">
                 {/* Avatar */}
-                <div className="relative group shrink-0">
-                    <div className="h-32 w-32 md:h-40 md:w-40 rounded-full border-[5px] border-white bg-[var(--background)] shadow-[6px_6px_0_0_var(--ink)] overflow-hidden relative">
+                <div className="relative group">
+                    <div className="h-32 w-32 md:h-40 md:w-40 rounded-full border-[4px] border-[var(--ink)] bg-white shadow-[6px_6px_0_0_var(--ink)] overflow-hidden relative">
                         {user.avatar ? (
                             <img src={user.avatar} alt={user.firstName} className="w-full h-full object-cover" />
                         ) : (
@@ -85,47 +84,45 @@ export default function ProfileHeader({ user, stats }) {
                     </label>
                 </div>
 
-                {/* Name, Bio & Meta */}
-                <div className="flex-1 pt-4 md:pt-16 min-w-0">
+                {/* Name & Role */}
+                <div className="flex-1 pb-2">
                     <div className="flex flex-wrap items-center gap-3 mb-2">
-                        <h1 className="font-display text-3xl md:text-4xl font-black uppercase tracking-tighter leading-none">
+                        <h1 className="font-display text-3xl md:text-5xl font-black uppercase tracking-tighter">
                             {user.firstName} {user.lastName}
                         </h1>
+                        <span className={`px-3 py-1 rounded-full border-[2px] border-[var(--ink)] text-[10px] font-black uppercase shadow-[2px_2px_0_0_var(--ink)] ${user.role === 'admin' ? 'bg-[var(--hotpink)] text-white' :
+                                user.role === 'seller' ? 'bg-[var(--acid)] text-[var(--ink)]' : 'bg-[var(--electric)] text-white'
+                            }`}>
+                            {user.role}
+                        </span>
                         {user.isVerified && (
                             <ShieldCheck size={28} className="text-[var(--electric)] shrink-0" strokeWidth={2.5} />
                         )}
                     </div>
-                    <p className="text-sm md:text-base font-medium opacity-60 mb-3 max-w-lg">
-                        {user.bio || "No bio yet — head to the Edit Profile section to add one!"}
+                    <p className="text-sm md:text-base font-medium opacity-70 max-w-xl">
+                        {user.bio || "No bio yet. Tell the world who you are!"}
                     </p>
-                    {/* Meta Tags */}
-                    <div className="flex flex-wrap gap-3 text-xs font-bold uppercase tracking-wider">
-                        {user.location && (
-                            <span className="flex items-center gap-1 opacity-60">
-                                <MapPin size={12} /> {user.location}
-                            </span>
-                        )}
-                        {user.website && (
-                            <a href={user.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[var(--electric)] hover:underline">
-                                <Globe size={12} /> {user.website.replace(/https?:\/\//, '')}
-                            </a>
-                        )}
-                        {user.phone && (
-                            <span className="flex items-center gap-1 opacity-60">
-                                <Phone size={12} /> {user.phone}
-                            </span>
-                        )}
-                        {user.businessName && (
-                            <span className="flex items-center gap-1 opacity-60">
-                                <Tag size={12} /> {user.businessName} {user.businessCategory ? `(${user.businessCategory})` : ''}
-                            </span>
-                        )}
-                        {user.role === 'seller' && user.rating > 0 && (
-                            <span className="flex items-center gap-1 text-amber-500">
-                                <Star size={12} className="fill-amber-500" /> {user.rating.toFixed(1)} ({user.totalRatings} ratings)
-                            </span>
-                        )}
-                    </div>
+                </div>
+
+                {/* Seller Mode Button */}
+                <div className="pb-4">
+                    {user.role === 'seller' ? (
+                        <Link
+                            href="/seller/dashboard"
+                            className="flex items-center gap-2 bg-[var(--ink)] text-white px-6 py-3 rounded-xl font-black uppercase tracking-widest text-[10px] shadow-[4px_4px_0_0_var(--acid)] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_0_var(--acid)] transition-all"
+                        >
+                            <Store size={16} />
+                            Seller Dashboard
+                        </Link>
+                    ) : (
+                        <button
+                            onClick={() => setIsSellerModalOpen(true)}
+                            className="flex items-center gap-2 bg-[var(--acid)] text-[var(--ink)] px-6 py-3 rounded-xl font-black uppercase tracking-widest text-[10px] border-[3px] border-[var(--ink)] shadow-[4px_4px_0_0_var(--ink)] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_0_var(--ink)] transition-all"
+                        >
+                            <DollarSign size={16} />
+                            Activate Seller Mode
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -147,24 +144,23 @@ export default function ProfileHeader({ user, stats }) {
                     </>
                 )}
             </div>
+
+            <SellerOnboardingModal
+                isOpen={isSellerModalOpen}
+                onClose={() => setIsSellerModalOpen(false)}
+            />
         </div>
     );
 }
 
 function StatCard({ icon, label, value, accent, dark }) {
     return (
-        <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className={`p-5 rounded-2xl border-[3px] border-[var(--ink)] shadow-[5px_5px_0_0_var(--ink)] flex flex-col gap-3 ${dark ? 'bg-[var(--ink)] text-white' : 'bg-white'}`}
+        <div
+            className={`border-[3px] border-[var(--ink)] rounded-xl p-4 shadow-[4px_4px_0_0_var(--ink)] flex flex-col gap-1 ${dark ? 'bg-[var(--ink)] text-white' : 'bg-white text-[var(--ink)]'}`}
         >
-            <div className="p-2.5 rounded-xl w-fit border-[2px] border-[var(--ink)]" style={{ backgroundColor: accent, color: dark ? 'var(--ink)' : 'white' }}>
-                {icon}
-            </div>
-            <div>
-                <div className="font-display text-2xl md:text-3xl font-black tracking-tight leading-none">{value}</div>
-                <div className="text-[10px] font-bold uppercase tracking-widest opacity-60 mt-1">{label}</div>
-            </div>
-        </motion.div>
+            <div className="opacity-70">{icon}</div>
+            <div className="text-2xl font-black font-display uppercase tracking-tight">{value}</div>
+            <div className="text-[10px] font-black uppercase opacity-60 tracking-widest">{label}</div>
+        </div>
     );
 }

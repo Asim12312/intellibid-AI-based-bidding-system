@@ -6,6 +6,9 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
+const PRIMARY_MODEL = 'gemini-2.5-flash';
+const FALLBACK_MODEL = 'gemini-2.0-flash-lite';
+
 const tagPick = (auction, userProfile) => {
     const hoursLeft = (new Date(auction.endTime).getTime() - Date.now()) / 3600000;
     const isSteal = hoursLeft > 0 && hoursLeft < 3 && auction.currentPrice <= (auction.startingPrice * 1.3) && auction.bidCount < 3;
@@ -52,15 +55,28 @@ why this specific user would want this item. Be specific, reference their profil
 Return valid JSON array: [{"id": "xxx", "hook": "Because..."}]
     `.trim();
 
-    try {
+    const tryEnrich = async (modelName) => {
         const model = genAI.getGenerativeModel({
-            model: 'gemini-1.5-flash',
+            model: modelName,
             generationConfig: { responseMimeType: "application/json" }
         });
-
         const result = await model.generateContent(prompt);
-        const responseText = result.response.text();
-        const hooksArray = JSON.parse(responseText);
+        return JSON.parse(result.response.text());
+    };
+
+    try {
+        let hooksArray;
+        try {
+            hooksArray = await tryEnrich(PRIMARY_MODEL);
+        } catch (primaryErr) {
+            const msg = primaryErr.message || '';
+            if (msg.includes('429') || msg.includes('quota') || msg.includes('model output')) {
+                console.warn('[AI Picks] Primary model failed, using fallback:', msg.slice(0, 80));
+                hooksArray = await tryEnrich(FALLBACK_MODEL);
+            } else {
+                throw primaryErr;
+            }
+        }
 
         // Map hooks back to auctions
         const hookMap = {};

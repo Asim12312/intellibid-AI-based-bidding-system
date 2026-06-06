@@ -4,7 +4,8 @@ import {
     getSellerStats,
     getActiveListings,
     getSellerActivity,
-    getSellerInsights
+    getSellerInsights,
+    activateSeller
 } from './seller.controller.js';
 import {
     createListing,
@@ -21,6 +22,7 @@ const router = express.Router();
 router.use(auth);
 
 // Seller Dashboard endpoints
+router.post('/activate', activateSeller);
 router.get('/dashboard/stats', getSellerStats);
 router.get('/listings/active', getActiveListings);
 router.get('/activity/recent', getSellerActivity);

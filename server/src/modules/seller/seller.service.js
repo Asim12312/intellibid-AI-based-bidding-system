@@ -88,7 +88,7 @@ export const getSellerActivityService = async (sellerId) => {
 
 export const getSellerInsightsService = async (sellerId) => {
     // Generate AI/Smart Insights based on seller's current listings
-    const activeCount = await Product.countDocuments({ seller: sellerId, endingDate: { $gt: new Date() } });
+    const activeCount = await Auction.countDocuments({ seller: sellerId, endTime: { $gt: new Date() } });
 
     const insights = [];
     

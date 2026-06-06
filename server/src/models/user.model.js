@@ -75,6 +75,19 @@ const userSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
+    sellerActivatedAt: Date,
+    sellerStatus: {
+        type: String,
+        enum: ['pending', 'active', 'suspended'],
+        default: null
+    },
+    stripeConnectedAccountId: String,
+
+    // Wallet / Funds
+    walletBalance: {
+        type: Number,
+        default: 0
+    },
 
     // Settings
     notificationsEnabled: {

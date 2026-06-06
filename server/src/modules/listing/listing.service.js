@@ -3,6 +3,10 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
+// Primary model with fallback for rate limits / empty-output errors
+const PRIMARY_MODEL = 'gemini-2.5-flash';
+const FALLBACK_MODEL = 'gemini-2.0-flash-lite';
+
 // ── Create a new auction listing ─────────────────────────────────────────────
 export const createListingService = async (sellerId, data, imageUrls) => {
     const {
@@ -61,29 +65,34 @@ Rules:
 - tags must be an array of strings.
 `.trim();
 
-    try {
+    const tryGenerateWithModel = async (modelName) => {
         const model = genAI.getGenerativeModel({
-            model: 'gemini-1.5-flash',
+            model: modelName,
             generationConfig: { 
                 responseMimeType: 'application/json',
                 temperature: 0.7,
-                maxOutputTokens: 1024
+                maxOutputTokens: 2048,
             }
         });
-
         const result = await model.generateContent(prompt);
         let text = result.response.text();
-        
-        // Sanitize response text
         text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+        return JSON.parse(text);
+    };
 
+    try {
         let parsed;
         try {
-            parsed = JSON.parse(text);
-        } catch (e) {
-            console.error('[AI Listing] JSON Parse failed. Raw text:', text);
-            // Attempt to fix common JSON errors if any
-            throw new Error('AI generated invalid data format.');
+            parsed = await tryGenerateWithModel(PRIMARY_MODEL);
+        } catch (primaryErr) {
+            const msg = primaryErr.message || '';
+            // Fall back on rate-limit (429) or empty output errors
+            if (msg.includes('429') || msg.includes('quota') || msg.includes('model output')) {
+                console.warn('[AI Listing] Primary model failed, trying fallback:', msg.slice(0, 80));
+                parsed = await tryGenerateWithModel(FALLBACK_MODEL);
+            } else {
+                throw primaryErr;
+            }
         }
 
         return {
@@ -94,8 +103,7 @@ Rules:
         };
     } catch (error) {
         console.error('[AI Listing] Gemini enhancement failed:', error.message);
-        // Provide a more helpful error message to the frontend
-        if (error.message.includes('API key')) {
+        if (error.message.includes('API key') || error.message.includes('credentials')) {
             throw new Error('AI service configuration error. Please contact support.');
         }
         throw new Error('AI enhancement temporarily unavailable. Please fill in details manually.');

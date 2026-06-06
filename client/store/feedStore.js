@@ -23,11 +23,18 @@ export const useFeedStore = create((set, get) => ({
 
             const data = await api(`/api/feed?${params.toString()}`);
 
-            set({
-                items: page === 1 ? data.items : [...items, ...data.items],
-                page: page + 1,
-                hasMore: data.hasMore,
-                feedType: data.type,
+            set((state) => {
+                const newItems = page === 1 ? data.items : [...state.items, ...data.items];
+                
+                // Final client-side deduplication to prevent key collisions
+                const uniqueItems = Array.from(new Map(newItems.map(item => [item._id, item])).values());
+
+                return {
+                    items: uniqueItems,
+                    page: state.page + 1,
+                    hasMore: data.hasMore,
+                    feedType: data.type,
+                };
             });
         } catch (error) {
             console.error('[FeedStore] Failed to fetch feed:', error);

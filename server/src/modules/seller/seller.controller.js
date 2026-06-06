@@ -1,4 +1,7 @@
 import { asyncHandler } from '../../utils/asyncHandler.js';
+import User from '../../models/user.model.js';
+import SellerProfile from '../../models/sellerProfile.model.js';
+import { encrypt } from '../../utils/encryption.js';
 import {
     getSellerStatsService,
     getActiveListingsService,
@@ -25,3 +28,56 @@ export const getSellerInsights = asyncHandler(async (req, res) => {
     const insights = await getSellerInsightsService(req.user.id);
     res.status(200).json({ success: true, data: insights });
 });
+
+export const activateSeller = asyncHandler(async (req, res) => {
+    const {
+        businessName,
+        businessCategory,
+        website,
+        bankAccountHolder,
+        bankName,
+        iban,
+        swiftCode,
+        termsAccepted
+    } = req.body;
+
+    if (!termsAccepted) {
+        return res.status(400).json({ success: false, message: 'You must accept terms to become a seller' });
+    }
+
+    // Update User
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    user.role = 'seller';
+    user.businessName = businessName;
+    user.businessCategory = businessCategory;
+    user.website = website;
+    user.sellerStatus = 'active'; // Default to active for now
+    user.sellerActivatedAt = new Date();
+    await user.save();
+
+    // Create/Update Seller Profile
+    const profileData = {
+        user: user._id,
+        bankAccountHolder,
+        bankName,
+        iban: encrypt(iban),
+        swiftCode,
+        termsAccepted,
+        termsAcceptedAt: new Date()
+    };
+
+    await SellerProfile.findOneAndUpdate(
+        { user: user._id },
+        profileData,
+        { upsert: true, new: true }
+    );
+
+    res.status(200).json({
+        success: true,
+        message: 'Seller account activated successfully',
+        user
+    });
+});
+

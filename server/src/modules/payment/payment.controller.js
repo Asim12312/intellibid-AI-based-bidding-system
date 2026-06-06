@@ -2,6 +2,7 @@ import Stripe from 'stripe';
 import { asyncHandler } from '../../utils/asyncHandler.js';
 import Order from '../../models/order.model.js';
 import Auction from '../../models/auction.model.js';
+import User from '../../models/user.model.js';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_placeholder');
 
@@ -9,71 +10,74 @@ export const createCheckoutSession = asyncHandler(async (req, res) => {
     const { orderId } = req.body;
 
     const order = await Order.findById(orderId).populate('auction');
-    if (!order) {
-        return res.status(404).json({ success: false, message: 'Order not found' });
-    }
+    if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+    if (order.status !== 'pending') return res.status(400).json({ success: false, message: 'Order is not pending' });
 
-    if (order.buyer.toString() !== req.user._id.toString()) {
-        return res.status(403).json({ success: false, message: 'You are not authorized to pay for this order' });
-    }
-
-    if (order.status !== 'pending') {
-        return res.status(400).json({ success: false, message: 'Order is no longer pending' });
-    }
-
-    // Create Stripe session
     const session = await stripe.checkout.sessions.create({
         payment_method_types: ['card'],
-        line_items: [
-            {
-                price_data: {
-                    currency: 'usd',
-                    product_data: {
-                        name: order.auction.title,
-                        images: order.auction.images?.length > 0 ? [order.auction.images[0]] : [],
-                    },
-                    unit_amount: Math.round(order.amount * 100), // Stripe expects cents
+        line_items: [{
+            price_data: {
+                currency: 'usd',
+                product_data: {
+                    name: order.auction.title,
                 },
-                quantity: 1,
+                unit_amount: Math.round(order.amount * 100),
             },
-        ],
+            quantity: 1,
+        }],
         mode: 'payment',
-        success_url: `${process.env.FRONTEND_URL}/dashboard?payment=success`,
-        cancel_url: `${process.env.FRONTEND_URL}/dashboard?payment=cancelled`,
+        success_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/order/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/order/cancel`,
         client_reference_id: order._id.toString(),
     });
-
-    order.stripeSessionId = session.id;
-    await order.save();
 
     res.status(200).json({ success: true, url: session.url });
 });
 
-export const handleStripeWebhook = async (req, res) => {
+export const handleStripeWebhook = asyncHandler(async (req, res) => {
     const sig = req.headers['stripe-signature'];
     let event;
 
     try {
-        event = stripe.webhooks.constructEvent(
-            req.body, // Make sure body parser is raw for this endpoint
-            sig,
-            process.env.STRIPE_WEBHOOK_SECRET || 'whsec_placeholder'
-        );
+        event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
     } catch (err) {
+        console.error('Webhook signature verification failed:', err.message);
         return res.status(400).send(`Webhook Error: ${err.message}`);
     }
 
     if (event.type === 'checkout.session.completed') {
         const session = event.data.object;
-        const orderId = session.client_reference_id;
+        const referenceParts = session.client_reference_id ? session.client_reference_id.split(':') : [];
 
-        if (orderId) {
-            await Order.findByIdAndUpdate(orderId, {
-                status: 'paid',
-                paymentDate: new Date()
+        if (referenceParts[0] === 'deposit') {
+            // It's a wallet deposit
+            const userId = referenceParts[1];
+            await User.findByIdAndUpdate(userId, {
+                $inc: { walletBalance: session.amount_total / 100 }
             });
+            console.log(`Wallet deposit of $${session.amount_total / 100} confirmed for User ${userId}`);
+        } else {
+            // It's an order payment
+            const orderId = session.client_reference_id;
+            if (orderId) {
+                const order = await Order.findById(orderId);
+                if (order && order.status === 'pending') {
+                    const platformFeeRate = 0.05; // 5%
+                    const amount = order.amount;
+                    const platformFee = amount * platformFeeRate;
+                    const sellerPayout = amount - platformFee;
+
+                    await Order.findByIdAndUpdate(orderId, {
+                        status: 'paid',
+                        paymentDate: new Date(),
+                        platformFee,
+                        sellerPayout
+                    });
+                    console.log(`Payment confirmed for Order ${orderId}`);
+                }
+            }
         }
     }
 
-    res.status(200).json({ received: true });
-};
+    res.json({ received: true });
+});
