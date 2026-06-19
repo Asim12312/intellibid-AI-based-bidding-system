@@ -11,6 +11,7 @@ const EVENT_WEIGHTS = {
     item_view:         3,
     time_on_page:      2,
     auction_lost:     -2,
+    account_suspended: 0,
 };
 
 const userEventSchema = new mongoose.Schema({
@@ -34,6 +35,10 @@ const userEventSchema = new mongoose.Schema({
         type: Number,
         required: true,
     },
+    context: {
+        type: String,
+        default: null,
+    },
     category: { type: String },
     tags: [{ type: String }],
     metadata: {
@@ -45,6 +50,13 @@ const userEventSchema = new mongoose.Schema({
         default: Date.now,
         index: { expireAfterSeconds: 2592000 }, // Auto-purge after 30 days
     },
+});
+
+userEventSchema.pre('validate', function(next) {
+    if (this.weight === undefined || this.weight === null) {
+        this.weight = EVENT_WEIGHTS[this.eventType] || 0;
+    }
+    next();
 });
 
 userEventSchema.index({ userId: 1, createdAt: -1 });
