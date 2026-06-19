@@ -1,7 +1,7 @@
 "use client";
 
-import { AdminSidebar } from "@/components/layouts/AdminSidebar";
 import { LiquidCursor } from "@/components/shared/LiquidCursor";
+import AdminSidebar from "@/components/shared/(sidebar)/AdminSidebar";
 
 export default function AdminLayout({ children }) {
   return (

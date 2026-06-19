@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { ArrowRight, Mail, Lock, User } from "lucide-react";
+import { ArrowRight, Mail, Lock, User, Eye, EyeOff } from "lucide-react";
 import { LiquidCursor } from "@/components/shared/LiquidCursor";
 import { GoogleLogin } from "@react-oauth/google";
 import { useState } from "react";
@@ -23,10 +23,42 @@ export default function Signup() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
+  const validateEmail = (email) => {
+    return String(email)
+      .toLowerCase()
+      .endsWith("@gmail.com");
+  };
+
+  const validateFirstName = (name) => {
+    const isOnlyDigits = /^\d+$/.test(name);
+    return !isOnlyDigits && name.length >= 2 && name.length <= 50;
+  };
+
+  const validateLastName = (name) => {
+    // Allows letters AND digits as requested
+    return name.length >= 2 && name.length <= 50;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+
+    // Frontend Validations
+    if (!validateFirstName(form.firstName)) {
+      setError("Please enter a valid first name (2-50 characters, no digits only)");
+      return;
+    }
+    if (!validateLastName(form.lastName)) {
+      setError("Please enter a valid last name (2-50 characters)");
+      return;
+    }
+    if (!validateEmail(form.email)) {
+      setError("Please enter a valid Gmail address (ending in @gmail.com)");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -53,7 +85,14 @@ export default function Signup() {
       });
 
       setUser(data.user);
-      router.push("/dashboard");
+      
+      const roleRoutes = {
+        buyer: "/dashboard",
+        seller: "/seller/dashboard",
+        admin: "/admin/dashboard",
+      };
+
+      router.push(roleRoutes[data.user.role] || "/dashboard");
     } catch (err) {
       setError(err.message || "Google signup failed");
     } finally {
@@ -161,6 +200,7 @@ export default function Signup() {
                     type="text"
                     placeholder="Jane"
                     value={form.firstName}
+                    maxLength={50}
                     onChange={(e) =>
                       setForm({ ...form, firstName: e.target.value })
                     }
@@ -185,6 +225,7 @@ export default function Signup() {
                     type="text"
                     placeholder="Doe"
                     value={form.lastName}
+                    maxLength={50}
                     onChange={(e) =>
                       setForm({ ...form, lastName: e.target.value })
                     }
@@ -222,11 +263,10 @@ export default function Signup() {
               <label className="font-display text-sm font-bold uppercase tracking-wide">
                 Account Type
               </label>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 {[
                   { id: "buyer", label: "Buyer", color: "var(--electric)" },
                   { id: "seller", label: "Seller", color: "var(--acid)" },
-                  { id: "hybrid", label: "Hybrid", color: "var(--hotpink)" },
                 ].map((type) => (
                   <label key={type.id} className="relative cursor-pointer">
                     {/* ✅ FIX 6: role radio wired to state */}
@@ -262,7 +302,7 @@ export default function Signup() {
                 </div>
                 {/* ✅ FIX 7: wired to state + minLength matches hint */}
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
                   value={form.password}
                   onChange={(e) =>
@@ -272,6 +312,13 @@ export default function Signup() {
                   className="w-full rounded-xl border-[3px] border-[var(--ink)] bg-[var(--background)] px-12 py-3 font-medium transition-colors focus:bg-white focus:outline-none focus:ring-4 focus:ring-[var(--electric)]/30"
                   required
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-3 opacity-50 hover:opacity-100 transition-opacity"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
               </div>
               <p className="text-xs text-[var(--ink)]/60 font-medium">
                 Must be at least 8 characters long.
@@ -307,7 +354,6 @@ export default function Signup() {
             <GoogleLogin
               onSuccess={handleGoogleSuccess}
               onError={() => setError("Google signup failed")}
-              useOneTap
               theme="outline"
               shape="pill"
               text="signup_with"

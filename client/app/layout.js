@@ -1,6 +1,8 @@
 import { Space_Grotesk, Inter } from "next/font/google";
 import "./globals.css";
 import GoogleProvider from "@/components/providers/GoogleProvider";
+import AuthProvider from "@/components/providers/AuthProvider";
+import SellerSidebar from "@/components/shared/(sidebar)/SellerSidebar";
 
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-display",
@@ -22,7 +24,9 @@ export default function RootLayout({ children }) {
     <html lang="en" className={`${spaceGrotesk.variable} ${inter.variable} h-full`}>
       <body className="min-h-full antialiased selection:bg-[var(--hotpink)] selection:text-white">
         <GoogleProvider>
-          {children}
+          <AuthProvider>
+            {children}
+          </AuthProvider>
         </GoogleProvider>
       </body>
     </html>

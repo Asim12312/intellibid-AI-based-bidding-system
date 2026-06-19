@@ -1,7 +1,8 @@
-import { signupService, loginService, verifyEmailService, googleLoginService } from './auth.service.js';
+import { signupService, loginService, verifyEmailService, googleLoginService, forgotPasswordService, resetPasswordService } from './auth.service.js';
 import { signupSchema, loginSchema } from './auth.validation.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
 import { sendTokenCookie } from '../../utils/cookie.js';
+import User from '../../models/user.model.js';
 
 export const signup = asyncHandler(async (req, res) => {
     // Validate input with Zod
@@ -56,4 +57,74 @@ export const googleLogin = asyncHandler(async (req, res) => {
     });
 
     res.status(200).json({ success: true, user });
+});
+
+export const forgotPassword = asyncHandler(async (req, res) => {
+    const { email } = req.body;
+    const result = await forgotPasswordService(email);
+    res.status(200).json({ success: true, ...result });
+});
+
+export const resetPassword = asyncHandler(async (req, res) => {
+    const { token, password } = req.body;
+    const result = await resetPasswordService(token, password);
+    res.status(200).json({ success: true, ...result });
+});
+
+export const getMe = asyncHandler(async (req, res) => {
+    // req.user only contains { id, role, email } from the JWT
+    // We need to fetch the full user from the DB to get avatar, names, etc.
+    const user = await User.findById(req.user.id).select('-password');
+    
+    if (!user) {
+        return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    res.status(200).json({
+        success: true,
+        user: {
+            id: user._id,
+            email: user.email,
+            role: user.role,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            avatar: user.avatar,
+        },
+    });
+});
+
+import { generateToken } from '../../services/token.service.js';
+
+export const upgradeToSeller = asyncHandler(async (req, res) => {
+    // req.user is from JWT payload, not a DB document. We must fetch the actual user.
+    const user = await User.findById(req.user.id);
+    
+    if (!user) {
+        return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    if (user.role === 'seller' || user.role === 'admin') {
+        return res.status(400).json({ success: false, message: 'Already a seller or admin' });
+    }
+    
+    // Update role
+    user.role = 'seller';
+    await user.save();
+
+    // Issue a new token since the role has changed
+    const newToken = generateToken(user);
+    sendTokenCookie(res, newToken);
+
+    res.status(200).json({
+        success: true,
+        message: 'Congratulations! Your account has been upgraded to Seller.',
+        user: {
+            id: user._id,
+            email: user.email,
+            role: user.role,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            avatar: user.avatar,
+        },
+    });
 });
