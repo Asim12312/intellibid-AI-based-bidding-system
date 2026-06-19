@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import ProfilePage from '../app/(buyer)/profile/page';
+import ProfilePage from '@/app/(profile)/profile/page';
 
 describe('Profile Page Feature', () => {
     it('renders profile information correctly', () => {

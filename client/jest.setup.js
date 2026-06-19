@@ -31,3 +31,29 @@ jest.mock('framer-motion', () => ({
     },
     AnimatePresence: ({ children }) => <>{children}</>,
 }));
+
+// Mock next/navigation
+jest.mock('next/navigation', () => ({
+    useRouter: () => ({
+        push: jest.fn(),
+        replace: jest.fn(),
+        prefetch: jest.fn(),
+        back: jest.fn(),
+    }),
+    usePathname: () => '/',
+    useSearchParams: () => new URLSearchParams(),
+    useParams: () => ({}),
+}));
+
+// Mock storage
+const localStorageMock = (function() {
+    let store = {};
+    return {
+        getItem(key) { return store[key] || null; },
+        setItem(key, value) { store[key] = value.toString(); },
+        removeItem(key) { delete store[key]; },
+        clear() { store = {}; }
+    };
+})();
+Object.defineProperty(window, 'localStorage', { value: localStorageMock });
+Object.defineProperty(window, 'sessionStorage', { value: localStorageMock });

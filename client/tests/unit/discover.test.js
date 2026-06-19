@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import DiscoverPage from '../app/(buyer)/discover/page';
+import DiscoverPage from '@/app/(buyer)/discover/page';
 
 describe('Discover and Search Feature', () => {
     it('renders search bar and category filters', () => {
