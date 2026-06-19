@@ -45,7 +45,7 @@ export const resolveEndedAuctions = async () => {
                     // Create event for winner notification
                     await UserEvent.create({
                         userId: highestBid.bidder,
-                        eventType: 'won_auction',
+                        eventType: 'auction_won',
                         auctionId: auction._id,
                         context: `You won the auction for ${auction.title} with a bid of $${highestBid.amount}! Payment is due within 48 hours.`
                     });
@@ -127,7 +127,7 @@ export const processExpiredOrders = async () => {
                 // Notify new winner
                 await UserEvent.create({
                     userId: nextHighestBid.bidder._id,
-                    eventType: 'won_auction',
+                    eventType: 'auction_won',
                     auctionId: auction._id,
                     context: `Good news! The previous winner defaulted. You have won the auction for ${auction.title} with your bid of $${nextHighestBid.amount}. Payment is due within 48 hours.`
                 });
