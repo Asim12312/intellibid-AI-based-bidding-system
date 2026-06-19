@@ -26,6 +26,7 @@ export const signupService = async (data) => {
         email: data.email,
         password: hashedPassword,
         role: data.role,
+        isVerified: process.env.BYPASS_EMAIL_VERIFICATION === 'true',
         emailVerificationToken: emailToken,
         emailVerificationExpires: expires,
     });
@@ -52,7 +53,7 @@ export const loginService = async (data) => {
     }
 
     // Check verification
-    if (!user.isVerified) {
+    if (!user.isVerified && process.env.BYPASS_EMAIL_VERIFICATION !== 'true') {
         throw new ApiError(401, 'Please verify your email before logging in');
     }
 
