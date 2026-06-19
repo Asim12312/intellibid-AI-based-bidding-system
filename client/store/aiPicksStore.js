@@ -6,13 +6,19 @@ export const useAiPicksStore = create((set, get) => ({
     loading: false,
     error: null,
     activeFilter: 'all', // 'all', 'steal', 'hot', 'match', 'fresh'
+    remainingRefreshes: 3,
 
-    fetchPicks: async () => {
+    fetchPicks: async (refresh = false) => {
         set({ loading: true, error: null });
         try {
-            const res = await api('/api/buyer/ai-picks');
+            const endpoint = refresh ? '/api/buyer/ai-picks?refresh=true' : '/api/buyer/ai-picks';
+            const res = await api(endpoint);
             if (res.success) {
-                set({ picks: res.data, loading: false });
+                set({ 
+                    picks: res.data, 
+                    remainingRefreshes: res.remainingRefreshes !== undefined ? res.remainingRefreshes : 3,
+                    loading: false 
+                });
             } else {
                 set({ error: res.message || 'Failed to load picks', loading: false });
             }

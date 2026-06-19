@@ -6,7 +6,9 @@ import BidsHeader from '@/components/bids/BidsHeader';
 import BidsTabs from '@/components/bids/BidsTabs';
 import BidCard from '@/components/bids/BidCard';
 import BidsEmpty from '@/components/bids/BidsEmpty';
-import PlaceBidModal from '@/components/bids/PlaceBidModal';
+import dynamic from 'next/dynamic';
+
+const PlaceBidModal = dynamic(() => import('@/components/bids/PlaceBidModal'), { ssr: false });
 import { motion } from 'framer-motion';
 import { Loader2, TrendingUp } from 'lucide-react';
 
@@ -79,8 +81,8 @@ export default function MyBidsPage() {
                     <BidsEmpty tab={activeTab} />
                 ) : (
                     <div className="grid grid-cols-1 gap-6">
-                        {bids.map((bid) => (
-                            <BidCard key={bid._id} bid={bid} />
+                        {bids.map((bid, index) => (
+                            <BidCard key={bid._id || bid.id || index} bid={bid} />
                         ))}
                     </div>
                 )}

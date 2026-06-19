@@ -86,6 +86,7 @@ export const getMe = asyncHandler(async (req, res) => {
             firstName: user.firstName,
             lastName: user.lastName,
             avatar: user.avatar,
+            walletBalance: user.walletBalance ?? 0,
         },
     });
 });
@@ -123,6 +124,7 @@ export const upgradeToSeller = asyncHandler(async (req, res) => {
             firstName: user.firstName,
             lastName: user.lastName,
             avatar: user.avatar,
+            walletBalance: user.walletBalance ?? 0,
         },
     });
 });

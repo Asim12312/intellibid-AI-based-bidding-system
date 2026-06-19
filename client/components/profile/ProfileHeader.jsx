@@ -5,7 +5,8 @@ import { motion } from "framer-motion";
 import { Camera, ShieldCheck, ShoppingBag, Gavel, DollarSign, Tag, TrendingUp, Store, Star, Loader2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
-import SellerOnboardingModal from "./SellerOnboardingModal";
+import dynamic from 'next/dynamic';
+const SellerOnboardingModal = dynamic(() => import('./SellerOnboardingModal'), { ssr: false });
 import Link from "next/link";
 
 export default function ProfileHeader({ user, stats }) {

@@ -35,6 +35,9 @@ export default function SandboxDeposit() {
             });
 
             if (res.success) {
+                // Force sync the auth store from the server to get the updated balance immediately
+                const { useAuthStore } = await import('@/store/authStore');
+                await useAuthStore.getState().checkAuth();
                 router.push('/dashboard?deposit=success');
             } else {
                 setError('Wallet deposit failed');

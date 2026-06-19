@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
-  ArrowUpRight, Bot, Gavel, TrendingUp, BellRing, 
+  ArrowUpRight, Bot, Gavel, TrendingUp, BellRing, Wallet,
   Clock, CheckCircle2, Activity, Sparkles, Plus, Search,
   ChevronRight, ArrowRight, Timer
 } from "lucide-react";
@@ -54,14 +55,32 @@ export default function BuyerDashboardPage() {
   const [depositAmount, setDepositAmount] = useState("");
   const [depositLoading, setDepositLoading] = useState(false);
   const user = useAuthStore((state) => state.user);
+  const checkAuth = useAuthStore((state) => state.checkAuth);
+  const searchParams = useSearchParams();
   
-  const [stats, setStats] = useState({ activeBids: 0, itemsWon: 0, totalSpent: 0, savedItems: 0 });
+  const [stats, setStats] = useState({ activeBids: 0, itemsWon: 0, totalSpent: 0, savedItems: 0, walletBalance: 0 });
   const [activeBids, setActiveBids] = useState([]);
   const [wonBids, setWonBids] = useState([]);
   const [orders, setOrders] = useState([]);
   const [recommendations, setRecommendations] = useState([]);
+  const [recsLoading, setRecsLoading] = useState(true);
   const [activity, setActivity] = useState([]);
+  const [activityLoading, setActivityLoading] = useState(true);
   const [loading, setLoading] = useState(true);
+
+  // Re-fetch user balance after a successful deposit return
+  useEffect(() => {
+    if (searchParams?.get('deposit') === 'success') {
+      checkAuth();
+      api('/api/buyer/dashboard/stats')
+        .then((res) => {
+          if (res?.success) setStats(res.data);
+        })
+        .catch((err) => console.error("Failed to refetch stats:", err));
+      // Clean up URL param without re-render
+      window.history.replaceState({}, '', '/dashboard');
+    }
+  }, [searchParams, checkAuth]);
 
   const handleDeposit = async (e) => {
     e.preventDefault();
@@ -91,21 +110,17 @@ export default function BuyerDashboardPage() {
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const [statsRes, bidsRes, wonRes, ordersRes, recsRes, actRes] = await Promise.all([
+        const [statsRes, bidsRes, wonRes, ordersRes] = await Promise.all([
           api('/api/buyer/dashboard/stats'),
           api('/api/buyer/bids/active'),
           api('/api/buyer/bids/won'),
-          api('/api/buyer/orders'),
-          api('/api/buyer/ai-picks'),
-          api('/api/buyer/activity')
+          api('/api/buyer/orders')
         ]);
 
         if (statsRes?.success) setStats(statsRes.data);
         if (bidsRes?.success) setActiveBids(bidsRes.bids || []);
         if (wonRes?.success) setWonBids(wonRes.bids || []);
         if (ordersRes?.success) setOrders(ordersRes.data || []);
-        if (recsRes?.success) setRecommendations(recsRes.data || []);
-        if (actRes?.success) setActivity(actRes.data || []);
       } catch (error) {
         console.error("Failed to load dashboard data:", error);
       } finally {
@@ -114,6 +129,36 @@ export default function BuyerDashboardPage() {
     };
 
     fetchDashboardData();
+  }, []);
+
+  // Background fetch for AI Picks
+  useEffect(() => {
+    const fetchRecommendations = async () => {
+      try {
+        const recsRes = await api('/api/buyer/ai-picks');
+        if (recsRes?.success) setRecommendations(recsRes.data || []);
+      } catch (error) {
+        console.error("Failed to load recommendations:", error);
+      } finally {
+        setRecsLoading(false);
+      }
+    };
+    fetchRecommendations();
+  }, []);
+
+  // Background fetch for Activity Feed
+  useEffect(() => {
+    const fetchActivity = async () => {
+      try {
+        const actRes = await api('/api/buyer/activity');
+        if (actRes?.success) setActivity(actRes.data || []);
+      } catch (error) {
+        console.error("Failed to load activity:", error);
+      } finally {
+        setActivityLoading(false);
+      }
+    };
+    fetchActivity();
   }, []);
 
   if (loading) {
@@ -138,9 +183,24 @@ export default function BuyerDashboardPage() {
               Agent Active
             </span>
           </div>
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-4 md:gap-6">
+            {/* Wallet Balance - clickable to open deposit form */}
+            <button
+              onClick={() => setDepositOpen(!depositOpen)}
+              title="Click to deposit funds"
+              className="hidden md:flex items-center gap-3 rounded-xl border-[3px] border-[var(--ink)] bg-[var(--background)] px-4 py-2 shadow-[3px_3px_0_0_var(--ink)] cursor-pointer group hover:bg-[var(--electric)] hover:text-white hover:shadow-[4px_4px_0_0_var(--ink)] transition-all hover:-translate-y-0.5"
+            >
+              <Wallet className="h-4 w-4 shrink-0 group-hover:text-[var(--acid)] transition-colors" strokeWidth={2.5} />
+              <div className="text-left">
+                <div className="text-[9px] font-black uppercase tracking-widest opacity-60">Wallet</div>
+                <div className="font-display text-base font-black leading-none">
+                  ${(user?.walletBalance ?? stats?.walletBalance ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+              </div>
+            </button>
+            <div className="hidden md:block h-8 w-px bg-[var(--ink)]/20" />
             <div className="hidden text-right md:block">
-              <div className="text-xs font-bold uppercase tracking-wide text-[var(--ink)]/60">Total Spent</div>
+              <div className="text-[10px] font-bold uppercase tracking-wide text-[var(--ink)]/50">Total Spent</div>
               <div className="font-display text-xl font-black">${stats?.totalSpent?.toLocaleString() || 0}</div>
             </div>
             <Link href={`/profile/${user?.id || user?._id}`} className="flex h-12 w-12 items-center justify-center rounded-2xl border-[3px] border-[var(--ink)] bg-[var(--electric)] overflow-hidden shadow-[2px_2px_0_0_var(--ink)] transition-transform hover:-translate-y-1 hover:shadow-[4px_4px_0_0_var(--ink)]">
@@ -263,7 +323,12 @@ export default function BuyerDashboardPage() {
           </div>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {recommendations?.length === 0 ? (
+            {recsLoading ? (
+              <div className="brutal bg-white p-12 text-center font-bold text-[var(--ink)]/60 col-span-full animate-pulse">
+                <Sparkles size={48} className="mx-auto mb-4 opacity-20 animate-spin" />
+                Scanning radar for tailormade picks...
+              </div>
+            ) : recommendations?.length === 0 ? (
               <div className="brutal bg-white p-12 text-center font-bold text-[var(--ink)]/60 col-span-full">
                 <Sparkles size={48} className="mx-auto mb-4 opacity-20" />
                 No recommendations yet. Start browsing to unlock AI picks!
@@ -424,7 +489,9 @@ export default function BuyerDashboardPage() {
                 </h3>
               </div>
               <div className="space-y-4 p-6 bg-[var(--background)] max-h-[600px] overflow-y-auto custom-scrollbar">
-                {activity?.length === 0 ? (
+                {activityLoading ? (
+                  <div className="text-center font-bold text-[var(--ink)]/60 py-10 uppercase tracking-widest animate-pulse">Receiving signals...</div>
+                ) : activity?.length === 0 ? (
                   <div className="text-center font-bold text-[var(--ink)]/60 py-10 uppercase tracking-widest">Silence on the wire</div>
                 ) : (
                   activity?.map((item, i) => (

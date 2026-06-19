@@ -30,6 +30,17 @@ const userProfileSchema = new mongoose.Schema({
         type: Date,
         default: Date.now,
     },
+    aiPicksCount: {
+        type: Number,
+        default: 0,
+    },
+    lastAiPicksAt: {
+        type: Date,
+    },
+    cachedAiPicks: {
+        type: Array,
+        default: [],
+    },
 }, { timestamps: true });
 
 export default mongoose.model('UserProfile', userProfileSchema);

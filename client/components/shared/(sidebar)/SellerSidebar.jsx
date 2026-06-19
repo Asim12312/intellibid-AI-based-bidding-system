@@ -11,6 +11,7 @@ import { useAuthStore } from "@/store/authStore";
 const baseItems = [
     { emoji: "📊", label: "Dashboard", color: "var(--acid)", textColor: "var(--ink)", href: "/seller/dashboard" },
     { emoji: "📦", label: "My Products", color: "var(--electric)", textColor: "#fff", href: "/seller/products" },
+    { emoji: "🤝", label: "Sales", color: "var(--sunset)", textColor: "#fff", href: "/seller/orders" },
     { emoji: "➕", label: "Create", color: "var(--hotpink)", textColor: "#fff", href: "/seller/create" },
     { emoji: "💬", label: "Messages", color: "var(--electric)", textColor: "#fff", href: "/chat" },
 ];

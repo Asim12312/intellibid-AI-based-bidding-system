@@ -1,4 +1,5 @@
 import { asyncHandler } from '../../utils/asyncHandler.js';
+import User from '../../models/user.model.js';
 import {
     getBuyerStatsService,
     getMyBidsService,
@@ -40,8 +41,13 @@ export const getRecentActivity = asyncHandler(async (req, res) => {
 
 export const getAiPicks = asyncHandler(async (req, res) => {
     const { getAiPicksService } = await import('./aiPicks.service.js');
-    const picks = await getAiPicksService(req.user.id);
-    res.status(200).json({ success: true, data: picks });
+    const refresh = req.query.refresh === 'true';
+    const result = await getAiPicksService(req.user.id, refresh);
+    res.status(200).json({ 
+        success: true, 
+        data: result.picks, 
+        remainingRefreshes: result.remainingRefreshes 
+    });
 });
 
 export const toggleWatchlist = asyncHandler(async (req, res) => {
@@ -110,17 +116,30 @@ export const sandboxDepositSuccess = asyncHandler(async (req, res) => {
         return res.status(400).json({ success: false, message: 'Invalid deposit amount' });
     }
 
-    // Increment wallet balance
-    await User.findByIdAndUpdate(userId, {
-        $inc: { walletBalance: Number(amount) }
-    });
+    // Increment wallet balance and return the updated balance
+    const updatedUser = await User.findByIdAndUpdate(
+        userId,
+        { $inc: { walletBalance: Number(amount) } },
+        { new: true }
+    ).select('walletBalance');
 
-    console.log(`[Sandbox] Deposit success: Credited $${amount} to User ${userId}`);
-    res.status(200).json({ success: true, message: 'Sandbox deposit processed successfully' });
+    console.log(`[Sandbox] Deposit success: Credited $${amount} to User ${userId}. New balance: $${updatedUser?.walletBalance}`);
+    res.status(200).json({ 
+        success: true, 
+        message: 'Sandbox deposit processed successfully',
+        newBalance: updatedUser?.walletBalance ?? 0
+    });
 });
 
 export const getMyOrders = asyncHandler(async (req, res) => {
     const { getMyOrdersService } = await import('./buyer.service.js');
     const orders = await getMyOrdersService(req.user.id);
     res.status(200).json({ success: true, data: orders });
+});
+
+export const completeOrder = asyncHandler(async (req, res) => {
+    const { orderId } = req.params;
+    const { completeOrderService } = await import('./buyer.service.js');
+    const order = await completeOrderService(orderId, req.user.id);
+    res.status(200).json({ success: true, message: 'Order marked as completed', data: order });
 });

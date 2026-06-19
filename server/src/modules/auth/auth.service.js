@@ -41,7 +41,7 @@ export const signupService = async (data) => {
     // Generate JWT
     const token = generateToken(user);
 
-    return { token, user: { id: user._id, email: user.email, role: user.role, firstName: user.firstName, lastName: user.lastName } };
+    return { token, user: { id: user._id, email: user.email, role: user.role, firstName: user.firstName, lastName: user.lastName, walletBalance: user.walletBalance ?? 0 } };
 };
 
 export const loginService = async (data) => {
@@ -72,7 +72,7 @@ export const loginService = async (data) => {
     // Generate JWT
     const token = generateToken(user);
 
-    return { token, user: { id: user._id, email: user.email, role: user.role, firstName: user.firstName, lastName: user.lastName } };
+    return { token, user: { id: user._id, email: user.email, role: user.role, firstName: user.firstName, lastName: user.lastName, walletBalance: user.walletBalance ?? 0 } };
 };
 
 export const verifyEmailService = async (token) => {
@@ -114,7 +114,7 @@ export const googleLoginService = async (idToken) => {
     }
 
     const token = generateToken(user);
-    return { token, user: { id: user._id, email: user.email, role: user.role, firstName: user.firstName, lastName: user.lastName } };
+    return { token, user: { id: user._id, email: user.email, role: user.role, firstName: user.firstName, lastName: user.lastName, walletBalance: user.walletBalance ?? 0 } };
 };
 
 export const forgotPasswordService = async (email) => {

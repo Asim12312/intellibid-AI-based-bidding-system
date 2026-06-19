@@ -6,6 +6,7 @@ import { trackEventService } from '../events/events.service.js';
 import { broadcastBid } from '../../config/socket.js';
 import mongoose from 'mongoose';
 import Order from '../../models/order.model.js';
+import UserEvent from '../../models/userEvent.model.js';
 
 export const getBuyerStatsService = async (userId) => {
     const userIdObj = new mongoose.Types.ObjectId(userId);
@@ -54,15 +55,43 @@ export const getBuyerStatsService = async (userId) => {
     ]);
     const totalSpent = spentAggregation.length > 0 ? spentAggregation[0].total : 0;
 
-    // 4. Saved Items Count
-    const user = await User.findById(userId).select('watchlist');
+    // 4. Lost / Outbid Count (Unique auctions where user was outbid AND auction has ended)
+    const lostAggregation = await Bid.aggregate([
+        { $match: { bidder: userIdObj, status: 'outbid' } },
+        {
+            $lookup: {
+                from: 'auctions',
+                localField: 'auction',
+                foreignField: '_id',
+                as: 'auctionData'
+            }
+        },
+        { $unwind: "$auctionData" },
+        {
+            $match: {
+                $or: [
+                    { "auctionData.status": { $ne: "active" } },
+                    { "auctionData.endTime": { $lte: now } }
+                ]
+            }
+        },
+        { $group: { _id: "$auctionData._id" } },
+        { $count: "count" }
+    ]);
+    const lostCount = lostAggregation.length > 0 ? lostAggregation[0].count : 0;
+
+    // 5. Saved Items Count
+    const user = await User.findById(userId).select('watchlist walletBalance');
     const savedItemsCount = user?.watchlist?.length || 0;
+    const walletBalance = user?.walletBalance ?? 0;
 
     return {
         activeBids: activeBidsCount,
         itemsWon: itemsWonCount,
+        lost: lostCount,
         totalSpent: totalSpent,
-        savedItems: savedItemsCount
+        savedItems: savedItemsCount,
+        walletBalance,
     };
 };
 
@@ -116,7 +145,26 @@ export const getMyBidsService = async (userId, tab = 'active', page = 1, limit =
                   }
                 : {}
         },
-        { $sort: { updatedAt: -1 } }
+        { $sort: { updatedAt: -1 } },
+        {
+            $lookup: {
+                from: 'orders',
+                let: { auctionId: '$auction._id', buyerId: '$bidder' },
+                pipeline: [
+                    {
+                        $match: {
+                            $expr: {
+                                $and: [
+                                    { $eq: ['$auction', '$$auctionId'] },
+                                    { $eq: ['$buyer', '$$buyerId'] }
+                                ]
+                            }
+                        }
+                    }
+                ],
+                as: 'order'
+            }
+        }
     ];
 
     // Execute count for pagination
@@ -134,11 +182,19 @@ export const getMyBidsService = async (userId, tab = 'active', page = 1, limit =
     ]);
 
     const formattedBids = bids.map(b => ({
+        _id: b._id,
         id: b._id,
         amount: b.amount,
         status: b.status,
         updatedAt: b.updatedAt,
+        order: b.order && b.order[0] ? {
+            _id: b.order[0]._id,
+            status: b.order[0].status,
+            trackingNumber: b.order[0].trackingNumber,
+            expiresAt: b.order[0].expiresAt
+        } : null,
         auction: {
+            _id: b.auction._id,
             id: b.auction._id,
             title: b.auction.title,
             images: b.auction.images,
@@ -337,4 +393,23 @@ export const getMyOrdersService = async (userId) => {
         { $sort: { createdAt: -1 } }
     ]);
     return orders;
+};
+
+export const completeOrderService = async (orderId, buyerId) => {
+    const order = await Order.findOne({ _id: orderId, buyer: buyerId });
+    if (!order) throw new Error('Order not found or you are not the buyer');
+    if (order.status !== 'shipped') throw new Error('Order must be shipped before it can be completed');
+    
+    order.status = 'completed';
+    await order.save();
+    
+    // Create user event for seller notification
+    await UserEvent.create({
+        userId: order.seller,
+        eventType: 'order_completed',
+        auctionId: order.auction,
+        context: `The buyer has marked the item as received. Order completed!`
+    });
+    
+    return order;
 };

@@ -7,10 +7,10 @@ import { Bot, Sparkles, Filter, AlertCircle, Flame, Zap, RefreshCw } from "lucid
 import { motion } from "framer-motion";
 
 export default function AiPicksPage() {
-    const { fetchPicks, getFilteredPicks, activeFilter, setFilter, loading, error } = useAiPicksStore();
+    const { fetchPicks, getFilteredPicks, activeFilter, setFilter, loading, error, remainingRefreshes } = useAiPicksStore();
 
     useEffect(() => {
-        fetchPicks();
+        fetchPicks(false);
     }, [fetchPicks]);
 
     const picks = getFilteredPicks();
@@ -40,14 +40,24 @@ export default function AiPicksPage() {
                     </p>
                 </div>
                 
-                <button 
-                    onClick={fetchPicks}
-                    disabled={loading}
-                    className="flex shrink-0 items-center gap-2 rounded-xl border-[3px] border-[var(--ink)] bg-white px-6 py-3 font-display text-sm font-black uppercase shadow-[4px_4px_0_0_var(--ink)] transition-transform hover:-translate-y-1 active:translate-y-0 disabled:opacity-50 disabled:hover:translate-y-0"
-                >
-                    <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} strokeWidth={3} />
-                    Refresh Radar
-                </button>
+                <div className="flex flex-col items-end gap-2 shrink-0">
+                    <button 
+                        onClick={() => fetchPicks(true)}
+                        disabled={loading || remainingRefreshes === 0}
+                        className="flex w-full md:w-auto items-center justify-center gap-2 rounded-xl border-[3px] border-[var(--ink)] bg-white px-6 py-3 font-display text-sm font-black uppercase shadow-[4px_4px_0_0_var(--ink)] transition-transform hover:-translate-y-1 active:translate-y-0 disabled:opacity-50 disabled:hover:translate-y-0"
+                    >
+                        <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} strokeWidth={3} />
+                        Refresh Radar
+                    </button>
+                    <span className={`font-display text-xs font-black uppercase tracking-widest px-3 py-1.5 rounded-lg border-[2px] border-[var(--ink)] shadow-[2px_2px_0_0_var(--ink)] select-none
+                        ${remainingRefreshes === 0 
+                            ? 'bg-[var(--hotpink)] text-white' 
+                            : 'bg-[var(--acid)] text-[var(--ink)]'
+                        }`}
+                    >
+                        ⚡ {remainingRefreshes !== undefined ? remainingRefreshes : 3} / 3 Refreshes Left
+                    </span>
+                </div>
             </div>
 
             {/* Filters */}

@@ -31,7 +31,7 @@ export default function PlaceBidModal() {
         }
 
         setLoading(true);
-        const result = await placeBid(selectedAuction._id, bidValue);
+        const result = await placeBid(selectedAuction._id || selectedAuction.id, bidValue);
         setLoading(false);
 
         if (!result.success) {
