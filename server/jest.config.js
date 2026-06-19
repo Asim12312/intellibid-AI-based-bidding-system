@@ -4,6 +4,8 @@ export default {
     moduleNameMapper: {
         '^(\\.{1,2}/.*)\\.js$': '$1',
     },
-    testMatch: ['**/tests/**/*.test.js'],
+    testMatch: ['**/tests/**/*.test.js', '**/tests/**/*.integration.test.js'],
+    testPathIgnorePatterns: ['/node_modules/'],
     verbose: true,
+    testTimeout: 30000,
 };

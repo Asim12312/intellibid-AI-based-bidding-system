@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import AuctionsPage from '../app/(buyer)/auctions/page';
+import AuctionsPage from '@/app/(seller)/seller/products/page';
 
 describe('Auctions list management', () => {
     it('renders the auctions dashboard with stats', () => {
