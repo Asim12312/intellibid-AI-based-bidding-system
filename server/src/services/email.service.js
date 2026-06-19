@@ -57,7 +57,7 @@ export const sendVerificationEmail = async (email, token) => {
         console.log(`✅ Verification email sent to: ${email}`);
     } catch (error) {
         console.error(`❌ Failed to send verification email to ${email}:`, error.message);
-        throw new Error(`Email delivery failed: ${error.message}. Link logged to console.`);
+        console.log("ℹ️ Bypassing throw: Verification link was logged to console above.");
     }
 };
 
@@ -101,6 +101,6 @@ export const sendPasswordResetEmail = async (email, token) => {
         console.log(`✅ Password reset email sent to: ${email}`);
     } catch (error) {
         console.error(`❌ Failed to send password reset email to ${email}:`, error.message);
-        throw new Error(`Email delivery failed: ${error.message}. Link logged to console.`);
+        console.log("ℹ️ Bypassing throw: Reset link was logged to console above.");
     }
 };
