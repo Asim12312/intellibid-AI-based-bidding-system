@@ -1,5 +1,7 @@
 import Auction from '../../models/auction.model.js';
 import Bid from '../../models/bid.model.js';
+import Order from '../../models/order.model.js';
+import UserEvent from '../../models/userEvent.model.js';
 import mongoose from 'mongoose';
 
 export const getSellerStatsService = async (sellerId) => {
@@ -118,4 +120,33 @@ export const getSellerInsightsService = async (sellerId) => {
     }
 
     return insights;
+};
+
+export const getSellerOrdersService = async (sellerId) => {
+    const orders = await Order.find({ seller: sellerId })
+        .populate('auction', 'title images currentPrice status')
+        .populate('buyer', 'firstName lastName email shippingAddress')
+        .sort({ createdAt: -1 })
+        .lean();
+    return orders;
+};
+
+export const shipOrderService = async (orderId, sellerId, trackingNumber) => {
+    const order = await Order.findOne({ _id: orderId, seller: sellerId });
+    if (!order) throw new Error('Order not found or you are not the seller');
+    if (order.status !== 'paid') throw new Error('Order must be paid before it can be shipped');
+    
+    order.status = 'shipped';
+    order.trackingNumber = trackingNumber;
+    await order.save();
+    
+    // Create an event notification for the buyer
+    await UserEvent.create({
+        userId: order.buyer,
+        eventType: 'order_shipped',
+        auctionId: order.auction,
+        context: `Your item has been shipped! Tracking number: ${trackingNumber}`
+    });
+    
+    return order;
 };

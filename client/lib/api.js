@@ -17,8 +17,13 @@ export const api = async (endpoint, options = {}) => {
 
     const res = await fetch(`${BASE_URL}${endpoint}`, {
         credentials: 'include',
+        cache: 'no-store',
         ...options,
-        headers,
+        headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            ...headers
+        },
     });
 
     let data;

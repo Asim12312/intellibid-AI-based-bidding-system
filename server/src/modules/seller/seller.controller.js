@@ -6,7 +6,9 @@ import {
     getSellerStatsService,
     getActiveListingsService,
     getSellerActivityService,
-    getSellerInsightsService
+    getSellerInsightsService,
+    getSellerOrdersService,
+    shipOrderService
 } from './seller.service.js';
 
 export const getSellerStats = asyncHandler(async (req, res) => {
@@ -27,6 +29,21 @@ export const getSellerActivity = asyncHandler(async (req, res) => {
 export const getSellerInsights = asyncHandler(async (req, res) => {
     const insights = await getSellerInsightsService(req.user.id);
     res.status(200).json({ success: true, data: insights });
+});
+
+export const getSellerOrders = asyncHandler(async (req, res) => {
+    const orders = await getSellerOrdersService(req.user.id);
+    res.status(200).json({ success: true, data: orders });
+});
+
+export const shipOrder = asyncHandler(async (req, res) => {
+    const { orderId } = req.params;
+    const { trackingNumber } = req.body;
+    if (!trackingNumber) {
+        return res.status(400).json({ success: false, message: 'Tracking number is required' });
+    }
+    const order = await shipOrderService(orderId, req.user.id, trackingNumber);
+    res.status(200).json({ success: true, message: 'Order marked as shipped', data: order });
 });
 
 export const activateSeller = asyncHandler(async (req, res) => {

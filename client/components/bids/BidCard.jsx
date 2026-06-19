@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useBidsStore } from '@/store/bidsStore';
-import { Clock, ArrowRight, Gavel } from 'lucide-react';
+import { Clock, ArrowRight, Gavel, Loader2, ShieldCheck, Package, CheckCircle2, CreditCard } from 'lucide-react';
+import { api } from '@/lib/api';
 
 export default function BidCard({ bid }) {
     const { openBidModal } = useBidsStore();
     const auction = bid.auction || {};
+    const order = bid.order;
     
     // Status Logic
     const isWinning = bid.status === 'winning';
@@ -15,13 +17,34 @@ export default function BidCard({ bid }) {
     const isOutbid = bid.status === 'outbid' && auction.status === 'active';
 
     let statusConfig = { label: 'Unknown', color: 'bg-gray-200 text-gray-800' };
-    if (isWinning) statusConfig = { label: 'Winning', color: 'bg-[var(--acid)] text-[var(--ink)] border-[var(--ink)]' };
-    else if (isWon) statusConfig = { label: 'Won', color: 'bg-[var(--sunset)] text-white border-[var(--ink)]' };
-    else if (isLost) statusConfig = { label: 'Lost', color: 'bg-red-500 text-white border-red-900' };
-    else if (isOutbid) statusConfig = { label: 'Outbid', color: 'bg-[var(--hotpink)] text-white border-[var(--ink)] animate-pulse' };
+    if (isWinning) {
+        statusConfig = { label: 'Winning', color: 'bg-[var(--acid)] text-[var(--ink)] border-[var(--ink)]' };
+    } else if (isWon) {
+        if (!order) {
+            statusConfig = { label: 'Won', color: 'bg-[var(--sunset)] text-white border-[var(--ink)]' };
+        } else if (order.status === 'pending') {
+            statusConfig = { label: 'Won (Unpaid)', color: 'bg-[var(--sunset)] text-white border-[var(--ink)] animate-pulse' };
+        } else if (order.status === 'paid') {
+            statusConfig = { label: 'Won (Paid)', color: 'bg-[var(--acid)] text-[var(--ink)] border-[var(--ink)]' };
+        } else if (order.status === 'shipped') {
+            statusConfig = { label: 'Won (Shipped)', color: 'bg-[var(--electric)] text-white border-[var(--ink)]' };
+        } else if (order.status === 'completed') {
+            statusConfig = { label: 'Won (Completed)', color: 'bg-green-600 text-white border-[var(--ink)]' };
+        } else if (order.status === 'cancelled') {
+            statusConfig = { label: 'Defaulted/Cancelled', color: 'bg-red-750 text-white border-[var(--ink)]' };
+        }
+    } else if (isLost) {
+        statusConfig = { label: 'Lost', color: 'bg-red-500 text-white border-red-900' };
+    } else if (isOutbid) {
+        statusConfig = { label: 'Outbid', color: 'bg-[var(--hotpink)] text-white border-[var(--ink)] animate-pulse' };
+    }
 
     // Timer logic
     const [timeLeft, setTimeLeft] = useState('');
+    const [orderTimeLeft, setOrderTimeLeft] = useState('');
+    const [paying, setPaying] = useState(false);
+    const [completing, setCompleting] = useState(false);
+
     useEffect(() => {
         if (!auction.endTime || auction.status !== 'active') return;
         
@@ -30,7 +53,11 @@ export default function BidCard({ bid }) {
             if (diff <= 0) return 'Ended';
             const hours = Math.floor(diff / (1000 * 60 * 60));
             const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-            if (hours > 24) return `${Math.floor(hours / 24)}d left`;
+            if (hours > 24) {
+                const days = Math.floor(hours / 24);
+                const remainingHours = hours % 24;
+                return `${days}d ${remainingHours}h ${minutes}m`;
+            }
             if (hours > 0) return `${hours}h ${minutes}m`;
             return `${minutes}m left`;
         };
@@ -40,7 +67,73 @@ export default function BidCard({ bid }) {
         return () => clearInterval(timer);
     }, [auction.endTime, auction.status]);
 
-    if (!auction._id) return null; // Defensive check if populated auction is missing
+    useEffect(() => {
+        if (!order || order.status !== 'pending' || !order.expiresAt) return;
+        
+        const calculateOrderTimeLeft = () => {
+            const diff = new Date(order.expiresAt).getTime() - Date.now();
+            if (diff <= 0) return 'Expired';
+            const hours = Math.floor(diff / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            if (hours > 24) {
+                const days = Math.floor(hours / 24);
+                const remainingHours = hours % 24;
+                return `Pay: ${days}d ${remainingHours}h ${minutes}m`;
+            }
+            if (hours > 0) return `Pay: ${hours}h ${minutes}m`;
+            return `Pay: ${minutes}m left`;
+        };
+
+        setOrderTimeLeft(calculateOrderTimeLeft());
+        const timer = setInterval(() => setOrderTimeLeft(calculateOrderTimeLeft()), 60000);
+        return () => clearInterval(timer);
+    }, [order]);
+
+    const handlePayment = async () => {
+        if (paying) return;
+        setPaying(true);
+        try {
+            const res = await api('/api/payments/create-checkout', {
+                method: 'POST',
+                body: JSON.stringify({ orderId: order._id })
+            });
+            if (res.success && res.url) {
+                window.location.href = res.url;
+            } else {
+                alert('Failed to initiate payment. Please try again.');
+            }
+        } catch (err) {
+            console.error(err);
+            alert(err.message || 'Failed to initiate payment.');
+        } finally {
+            setPaying(false);
+        }
+    };
+
+    const handleCompleteOrder = async () => {
+        if (completing) return;
+        if (!confirm('Mark this item as received and finalize the trade? This will release funds to the seller.')) return;
+        setCompleting(true);
+        try {
+            const res = await api(`/api/buyer/orders/${order._id}/complete`, {
+                method: 'POST'
+            });
+            if (res.success) {
+                useBidsStore.getState().resetBids();
+                useBidsStore.getState().fetchStats();
+            } else {
+                alert('Failed to complete the order.');
+            }
+        } catch (err) {
+            console.error(err);
+            alert(err.message || 'Failed to complete the order.');
+        } finally {
+            setCompleting(false);
+        }
+    };
+
+    const auctionId = auction._id || auction.id;
+    if (!auctionId) return null; // Defensive check if populated auction is missing
 
     return (
         <motion.div
@@ -94,6 +187,43 @@ export default function BidCard({ bid }) {
                             <span className={timeLeft.includes('m left') ? 'text-[var(--hotpink)]' : ''}>{timeLeft}</span>
                             <span className="opacity-50 text-xs ml-auto">({auction.bidCount} bids)</span>
                         </div>
+                    ) : isWon && order ? (
+                        <div className="flex-1 flex flex-col gap-1 w-full text-left">
+                            <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-[var(--ink)]/70">
+                                {order.status === 'pending' && (
+                                    <>
+                                        <Clock size={14} className="text-[var(--hotpink)]" />
+                                        <span className="text-[var(--hotpink)] font-black">{orderTimeLeft}</span>
+                                    </>
+                                )}
+                                {order.status === 'paid' && (
+                                    <>
+                                        <ShieldCheck size={14} className="text-green-600 animate-pulse" />
+                                        <span className="text-green-600 font-black">Paid. Preparing Package.</span>
+                                    </>
+                                )}
+                                {order.status === 'shipped' && (
+                                    <>
+                                        <Package size={14} className="text-[var(--electric)] animate-bounce" />
+                                        <span className="text-[var(--electric)] font-black">Package Shipped</span>
+                                    </>
+                                )}
+                                {order.status === 'completed' && (
+                                    <>
+                                        <CheckCircle2 size={14} className="text-green-600" />
+                                        <span className="text-green-600 font-black">Escrow Released</span>
+                                    </>
+                                )}
+                                {order.status === 'cancelled' && (
+                                    <span className="text-red-600 font-black">Cancelled (Delinquent)</span>
+                                )}
+                            </div>
+                            {order.trackingNumber && (
+                                <p className="text-[10px] font-mono font-bold bg-gray-50 px-2 py-1 rounded border border-black/10 mt-1 max-w-max">
+                                    Tracking: <span className="text-[var(--electric)]">{order.trackingNumber}</span>
+                                </p>
+                            )}
+                        </div>
                     ) : (
                         <div className="flex-1 flex items-center gap-2 text-sm font-bold bg-gray-100 text-gray-500 px-3 py-2 border-[2px] border-gray-300 rounded-lg">
                             Auction Ended
@@ -102,7 +232,7 @@ export default function BidCard({ bid }) {
 
                     <div className="flex w-full sm:w-auto gap-2">
                         <Link 
-                            href={`/auction/${auction._id}`}
+                            href={`/auction/${auctionId}`}
                             className="flex-1 sm:flex-none flex items-center justify-center p-3 border-[3px] border-[var(--ink)] rounded-xl hover:bg-gray-100 transition-colors"
                         >
                             <ArrowRight size={20} />
@@ -114,6 +244,26 @@ export default function BidCard({ bid }) {
                                 className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-[var(--hotpink)] text-white px-6 py-3 rounded-xl border-[3px] border-[var(--ink)] font-black uppercase tracking-widest text-xs shadow-[4px_4px_0_0_var(--ink)] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_0_var(--ink)] transition-all"
                             >
                                 <Gavel size={16} /> Raise Bid
+                            </button>
+                        )}
+
+                        {isWon && order && order.status === 'pending' && (
+                            <button 
+                                onClick={handlePayment}
+                                disabled={paying}
+                                className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-[var(--sunset)] text-white px-6 py-3 rounded-xl border-[3px] border-[var(--ink)] font-black uppercase tracking-widest text-xs shadow-[4px_4px_0_0_var(--ink)] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_0_var(--ink)] transition-all disabled:opacity-50"
+                            >
+                                {paying ? <Loader2 size={16} className="animate-spin" /> : <CreditCard size={16} />} Pay Now
+                            </button>
+                        )}
+
+                        {isWon && order && order.status === 'shipped' && (
+                            <button 
+                                onClick={handleCompleteOrder}
+                                disabled={completing}
+                                className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-green-500 text-white px-6 py-3 rounded-xl border-[3px] border-[var(--ink)] font-black uppercase tracking-widest text-xs shadow-[4px_4px_0_0_var(--ink)] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_0_var(--ink)] transition-all disabled:opacity-50"
+                            >
+                                {completing ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />} Mark Received
                             </button>
                         )}
                     </div>

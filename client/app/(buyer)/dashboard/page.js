@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
-  ArrowUpRight, Bot, Gavel, TrendingUp, BellRing, 
+  ArrowUpRight, Bot, Gavel, TrendingUp, BellRing, Wallet,
   Clock, CheckCircle2, Activity, Sparkles, Plus, Search,
   ChevronRight, ArrowRight, Timer
 } from "lucide-react";
@@ -23,7 +24,11 @@ function CountdownTimer({ endTime }) {
 
             setIsUrgent(h < 24);
 
-            if (h > 24) return `${Math.floor(h / 24)}d ${h % 24}h`;
+            if (h > 24) {
+                const days = Math.floor(h / 24);
+                const remainingHours = h % 24;
+                return `${days}d ${remainingHours}h ${m}m`;
+            }
             if (h > 0) return `${h}h ${m}m ${s}s`;
             return `${m}m ${s}s`;
         };
@@ -45,36 +50,77 @@ import Link from "next/link";
 import { useAuthStore } from "@/store/authStore";
 import { api } from "@/lib/api";
 
-export default function BuyerDashboardPage() {
+function BuyerDashboardContent() {
   const [depositOpen, setDepositOpen] = useState(false);
+  const [depositAmount, setDepositAmount] = useState("");
+  const [depositLoading, setDepositLoading] = useState(false);
   const user = useAuthStore((state) => state.user);
+  const checkAuth = useAuthStore((state) => state.checkAuth);
+  const searchParams = useSearchParams();
   
-  const [stats, setStats] = useState({ activeBids: 0, itemsWon: 0, totalSpent: 0, savedItems: 0 });
+  const [stats, setStats] = useState({ activeBids: 0, itemsWon: 0, totalSpent: 0, savedItems: 0, walletBalance: 0 });
   const [activeBids, setActiveBids] = useState([]);
   const [wonBids, setWonBids] = useState([]);
   const [orders, setOrders] = useState([]);
   const [recommendations, setRecommendations] = useState([]);
+  const [recsLoading, setRecsLoading] = useState(true);
   const [activity, setActivity] = useState([]);
+  const [activityLoading, setActivityLoading] = useState(true);
   const [loading, setLoading] = useState(true);
+
+  // Re-fetch user balance after a successful deposit return
+  useEffect(() => {
+    if (searchParams?.get('deposit') === 'success') {
+      checkAuth();
+      api('/api/buyer/dashboard/stats')
+        .then((res) => {
+          if (res?.success) setStats(res.data);
+        })
+        .catch((err) => console.error("Failed to refetch stats:", err));
+      // Clean up URL param without re-render
+      window.history.replaceState({}, '', '/dashboard');
+    }
+  }, [searchParams, checkAuth]);
+
+  const handleDeposit = async (e) => {
+    e.preventDefault();
+    if (!depositAmount || Number(depositAmount) < 5) {
+      alert("Minimum deposit is $5");
+      return;
+    }
+    setDepositLoading(true);
+    try {
+      const res = await api('/api/buyer/wallet/deposit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: Number(depositAmount) }),
+      });
+      if (res.success && res.url) {
+        window.location.href = res.url;
+      } else {
+        alert("Failed to create deposit checkout session.");
+      }
+    } catch (err) {
+      alert(err.message || "Failed to initiate deposit");
+    } finally {
+      setDepositLoading(false);
+    }
+  };
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const [statsRes, bidsRes, wonRes, ordersRes, recsRes, actRes] = await Promise.all([
+        const [statsRes, bidsRes, wonRes, ordersRes] = await Promise.all([
           api('/api/buyer/dashboard/stats'),
           api('/api/buyer/bids/active'),
           api('/api/buyer/bids/won'),
-          api('/api/buyer/orders'),
-          api('/api/buyer/ai-picks'),
-          api('/api/buyer/activity')
+          api('/api/buyer/orders')
         ]);
 
         if (statsRes?.success) setStats(statsRes.data);
         if (bidsRes?.success) setActiveBids(bidsRes.bids || []);
         if (wonRes?.success) setWonBids(wonRes.bids || []);
         if (ordersRes?.success) setOrders(ordersRes.data || []);
-        if (recsRes?.success) setRecommendations(recsRes.data || []);
-        if (actRes?.success) setActivity(actRes.data || []);
       } catch (error) {
         console.error("Failed to load dashboard data:", error);
       } finally {
@@ -83,6 +129,36 @@ export default function BuyerDashboardPage() {
     };
 
     fetchDashboardData();
+  }, []);
+
+  // Background fetch for AI Picks
+  useEffect(() => {
+    const fetchRecommendations = async () => {
+      try {
+        const recsRes = await api('/api/buyer/ai-picks');
+        if (recsRes?.success) setRecommendations(recsRes.data || []);
+      } catch (error) {
+        console.error("Failed to load recommendations:", error);
+      } finally {
+        setRecsLoading(false);
+      }
+    };
+    fetchRecommendations();
+  }, []);
+
+  // Background fetch for Activity Feed
+  useEffect(() => {
+    const fetchActivity = async () => {
+      try {
+        const actRes = await api('/api/buyer/activity');
+        if (actRes?.success) setActivity(actRes.data || []);
+      } catch (error) {
+        console.error("Failed to load activity:", error);
+      } finally {
+        setActivityLoading(false);
+      }
+    };
+    fetchActivity();
   }, []);
 
   if (loading) {
@@ -107,9 +183,24 @@ export default function BuyerDashboardPage() {
               Agent Active
             </span>
           </div>
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-4 md:gap-6">
+            {/* Wallet Balance - clickable to open deposit form */}
+            <button
+              onClick={() => setDepositOpen(!depositOpen)}
+              title="Click to deposit funds"
+              className="hidden md:flex items-center gap-3 rounded-xl border-[3px] border-[var(--ink)] bg-[var(--background)] px-4 py-2 shadow-[3px_3px_0_0_var(--ink)] cursor-pointer group hover:bg-[var(--electric)] hover:text-white hover:shadow-[4px_4px_0_0_var(--ink)] transition-all hover:-translate-y-0.5"
+            >
+              <Wallet className="h-4 w-4 shrink-0 group-hover:text-[var(--acid)] transition-colors" strokeWidth={2.5} />
+              <div className="text-left">
+                <div className="text-[9px] font-black uppercase tracking-widest opacity-60">Wallet</div>
+                <div className="font-display text-base font-black leading-none">
+                  ${(user?.walletBalance ?? stats?.walletBalance ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+              </div>
+            </button>
+            <div className="hidden md:block h-8 w-px bg-[var(--ink)]/20" />
             <div className="hidden text-right md:block">
-              <div className="text-xs font-bold uppercase tracking-wide text-[var(--ink)]/60">Total Spent</div>
+              <div className="text-[10px] font-bold uppercase tracking-wide text-[var(--ink)]/50">Total Spent</div>
               <div className="font-display text-xl font-black">${stats?.totalSpent?.toLocaleString() || 0}</div>
             </div>
             <Link href={`/profile/${user?.id || user?._id}`} className="flex h-12 w-12 items-center justify-center rounded-2xl border-[3px] border-[var(--ink)] bg-[var(--electric)] overflow-hidden shadow-[2px_2px_0_0_var(--ink)] transition-transform hover:-translate-y-1 hover:shadow-[4px_4px_0_0_var(--ink)]">
@@ -193,12 +284,25 @@ export default function BuyerDashboardPage() {
             >
               <div className="brutal bg-white p-6 md:p-8">
                 <h3 className="font-display text-2xl font-black mb-4">Add Funds to Wallet</h3>
-                <div className="flex flex-col md:flex-row gap-4">
-                  <input type="number" placeholder="Amount (USD)" className="flex-1 rounded-xl border-[3px] border-[var(--ink)] bg-[var(--background)] px-6 py-4 font-display text-xl font-bold focus:bg-white focus:outline-none focus:ring-4 focus:ring-[var(--electric)]/30" />
-                  <button className="rounded-xl border-[3px] border-[var(--ink)] bg-[var(--ink)] px-8 py-4 font-display text-lg font-black uppercase text-white shadow-[4px_4px_0_0_var(--hotpink)] transition-transform hover:-translate-y-1">
-                    Proceed to Payment
+                <form onSubmit={handleDeposit} className="flex flex-col md:flex-row gap-4">
+                  <input 
+                    type="number" 
+                    placeholder="Amount (USD, min $5)" 
+                    value={depositAmount}
+                    onChange={(e) => setDepositAmount(e.target.value)}
+                    required
+                    min="5"
+                    disabled={depositLoading}
+                    className="flex-1 rounded-xl border-[3px] border-[var(--ink)] bg-[var(--background)] px-6 py-4 font-display text-xl font-bold focus:bg-white focus:outline-none focus:ring-4 focus:ring-[var(--electric)]/30" 
+                  />
+                  <button 
+                    type="submit"
+                    disabled={depositLoading}
+                    className="rounded-xl border-[3px] border-[var(--ink)] bg-[var(--ink)] px-8 py-4 font-display text-lg font-black uppercase text-white shadow-[4px_4px_0_0_var(--hotpink)] transition-transform hover:-translate-y-1 disabled:opacity-50"
+                  >
+                    {depositLoading ? "Redirecting..." : "Proceed to Payment"}
                   </button>
-                </div>
+                </form>
               </div>
             </motion.div>
           )}
@@ -219,7 +323,12 @@ export default function BuyerDashboardPage() {
           </div>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {recommendations?.length === 0 ? (
+            {recsLoading ? (
+              <div className="brutal bg-white p-12 text-center font-bold text-[var(--ink)]/60 col-span-full animate-pulse">
+                <Sparkles size={48} className="mx-auto mb-4 opacity-20 animate-spin" />
+                Scanning radar for tailormade picks...
+              </div>
+            ) : recommendations?.length === 0 ? (
               <div className="brutal bg-white p-12 text-center font-bold text-[var(--ink)]/60 col-span-full">
                 <Sparkles size={48} className="mx-auto mb-4 opacity-20" />
                 No recommendations yet. Start browsing to unlock AI picks!
@@ -380,7 +489,9 @@ export default function BuyerDashboardPage() {
                 </h3>
               </div>
               <div className="space-y-4 p-6 bg-[var(--background)] max-h-[600px] overflow-y-auto custom-scrollbar">
-                {activity?.length === 0 ? (
+                {activityLoading ? (
+                  <div className="text-center font-bold text-[var(--ink)]/60 py-10 uppercase tracking-widest animate-pulse">Receiving signals...</div>
+                ) : activity?.length === 0 ? (
                   <div className="text-center font-bold text-[var(--ink)]/60 py-10 uppercase tracking-widest">Silence on the wire</div>
                 ) : (
                   activity?.map((item, i) => (
@@ -399,4 +510,18 @@ export default function BuyerDashboardPage() {
       </main>
     </>
   );
+}
+
+export default function BuyerDashboardPage() {
+    return (
+        <Suspense fallback={
+            <div className="flex items-center justify-center min-h-screen bg-[var(--background)]">
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl border-[3px] border-[var(--ink)] bg-[var(--electric)] text-white shadow-[4px_4px_0_0_var(--ink)] animate-pulse">
+                    <Activity className="h-8 w-8 animate-spin" />
+                </div>
+            </div>
+        }>
+            <BuyerDashboardContent />
+        </Suspense>
+    );
 }

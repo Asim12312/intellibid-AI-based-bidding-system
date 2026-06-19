@@ -37,7 +37,7 @@ export default function SellerDashboard() {
       } catch (error) {
         console.error("Failed to load seller dashboard data:", error);
       } finally {
-        setTimeout(() => setLoading(false), 800); // Small delay for smooth transition
+        setLoading(false);
       }
     };
 

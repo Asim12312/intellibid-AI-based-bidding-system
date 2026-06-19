@@ -94,12 +94,61 @@ Return valid JSON array: [{"id": "xxx", "hook": "Because..."}]
     }
 };
 
-export const getAiPicksService = async (userId) => {
+export const getAiPicksService = async (userId, forceRefresh = false) => {
     // 1. Load User Profile
-    let userProfile = await UserProfile.findOne({ userId }).lean();
-    if (!userProfile) {
-        // Mock a generic profile if cold start
-        userProfile = { categoryScores: {}, tagScores: {}, priceRange: { min: 0, max: 999999 } };
+    let userProfile = await UserProfile.findOne({ userId });
+    
+    const now = new Date();
+    const oneDay = 24 * 60 * 60 * 1000;
+    
+    let aiPicksCount = 0;
+    let lastAiPicksAt = null;
+    let cachedPicks = [];
+    
+    if (userProfile) {
+        aiPicksCount = userProfile.aiPicksCount || 0;
+        lastAiPicksAt = userProfile.lastAiPicksAt;
+        cachedPicks = userProfile.cachedAiPicks || [];
+        
+        if (lastAiPicksAt && (now.getTime() - lastAiPicksAt.getTime()) > oneDay) {
+            aiPicksCount = 0;
+            userProfile.aiPicksCount = 0;
+            await userProfile.save();
+        }
+    }
+    
+    const remainingRefreshes = Math.max(0, 3 - aiPicksCount);
+    
+    // If not force refresh and we have cached picks, return cache
+    if (!forceRefresh && cachedPicks && cachedPicks.length > 0) {
+        return {
+            picks: cachedPicks,
+            remainingRefreshes
+        };
+    }
+    
+    // Otherwise, generate new picks (either force refresh or first load)
+    if (aiPicksCount >= 3) {
+        const error = new Error('Daily AI Picks limit reached (3/3). Try again tomorrow.');
+        error.statusCode = 429;
+        throw error;
+    }
+    
+    let profileForScoring;
+    if (userProfile) {
+        profileForScoring = userProfile.toObject();
+    } else {
+        // Cold start - create a profile
+        const newProfile = await UserProfile.create({ 
+            userId, 
+            aiPicksCount: 0, 
+            lastAiPicksAt: now 
+        });
+        userProfile = newProfile;
+        profileForScoring = newProfile.toObject();
+        profileForScoring.categoryScores = {};
+        profileForScoring.tagScores = {};
+        profileForScoring.priceRange = { min: 0, max: 999999 };
     }
 
     // 2. Get Exclusions (items already bidded on)
@@ -114,10 +163,10 @@ export const getAiPicksService = async (userId) => {
     const filter = { status: 'active', endTime: { $gt: new Date() } };
     
     // Optimize: Only fetch items in user's price range if they have a history
-    if (userProfile.interactionCount > 5) {
+    if (profileForScoring.interactionCount > 5) {
         filter.currentPrice = { 
-            $gte: userProfile.priceRange.min * 0.5, 
-            $lte: userProfile.priceRange.max * 1.5 
+            $gte: profileForScoring.priceRange.min * 0.5, 
+            $lte: profileForScoring.priceRange.max * 1.5 
         };
     }
 
@@ -126,24 +175,24 @@ export const getAiPicksService = async (userId) => {
     // 4. Score & Filter
     const scoredPicks = candidates
         .map(auction => {
-            const score = scoreAuctionForUser(auction, userProfile, excludedIds);
+            const score = scoreAuctionForUser(auction, profileForScoring, excludedIds);
             return { ...auction, aiScore: score };
         })
         .filter(a => a.aiScore > 0)
         .sort((a, b) => b.aiScore - a.aiScore)
-        .slice(0, 12); // Top 12 picks for the grid
+        .slice(0, 5); // Top 5 picks to optimize API calls
 
     // 5. Tagging
     const taggedPicks = scoredPicks.map(pick => ({
         ...pick,
-        tagInfo: tagPick(pick, userProfile)
+        tagInfo: tagPick(pick, profileForScoring)
     }));
 
     // 6. Gemini Enrichment
-    const enrichedPicks = await enrichWithGemini(taggedPicks, userProfile);
+    const enrichedPicks = await enrichWithGemini(taggedPicks, profileForScoring);
 
     // Format response
-    return enrichedPicks.map(p => ({
+    const formattedPicks = enrichedPicks.map(p => ({
         id: p._id,
         title: p.title,
         category: p.category,
@@ -157,4 +206,15 @@ export const getAiPicksService = async (userId) => {
         tagLabel: p.tagInfo.label,
         hook: p.hook || null
     }));
+
+    // Save to user profile cached picks and increment count
+    userProfile.cachedAiPicks = formattedPicks;
+    userProfile.aiPicksCount = aiPicksCount + 1;
+    userProfile.lastAiPicksAt = now;
+    await userProfile.save();
+
+    return {
+        picks: formattedPicks,
+        remainingRefreshes: Math.max(0, 3 - (aiPicksCount + 1))
+    };
 };

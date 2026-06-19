@@ -10,7 +10,9 @@ import {
     toggleWatchlist,
     getWatchlist,
     getMyOrders,
-    depositFunds
+    depositFunds,
+    sandboxDepositSuccess,
+    completeOrder
 } from './buyer.controller.js';
 
 const router = express.Router();
@@ -26,9 +28,11 @@ router.get('/recommendations', getRecommendations);
 router.get('/activity', getRecentActivity);
 router.get('/ai-picks', getAiPicks);
 router.get('/orders', getMyOrders);
+router.post('/orders/:orderId/complete', completeOrder);
 
 // Wallet
 router.post('/wallet/deposit', depositFunds);
+router.post('/wallet/sandbox-deposit-success', sandboxDepositSuccess);
 
 // Watchlist routes
 router.get('/watchlist', getWatchlist);
