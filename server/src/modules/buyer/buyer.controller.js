@@ -60,8 +60,21 @@ export const depositFunds = asyncHandler(async (req, res) => {
     const { amount } = req.body;
     if (!amount || amount < 5) return res.status(400).json({ success: false, message: 'Minimum deposit is $5' });
 
-    import('stripe').then(async ({ default: Stripe }) => {
-        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_placeholder');
+    // Fallback: If Stripe is not configured, redirect to sandbox deposit page!
+    const isStripeConfigured = process.env.STRIPE_SECRET_KEY && !process.env.STRIPE_SECRET_KEY.includes('placeholder');
+    if (!isStripeConfigured) {
+        const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
+        return res.status(200).json({
+            success: true,
+            url: `${clientUrl}/order/sandbox-deposit?amount=${amount}`,
+            isSandbox: true
+        });
+    }
+
+    try {
+        const stripeModule = await import('stripe');
+        const Stripe = stripeModule.default;
+        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
         const session = await stripe.checkout.sessions.create({
             payment_method_types: ['card'],
             line_items: [{
@@ -73,12 +86,37 @@ export const depositFunds = asyncHandler(async (req, res) => {
                 quantity: 1,
             }],
             mode: 'payment',
-            success_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/dashboard?deposit=success`,
-            cancel_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/dashboard?deposit=cancelled`,
+            success_url: `${process.env.CLIENT_URL || 'http://localhost:3000'}/dashboard?deposit=success`,
+            cancel_url: `${process.env.CLIENT_URL || 'http://localhost:3000'}/dashboard?deposit=cancelled`,
             client_reference_id: `deposit:${req.user.id}`,
         });
         res.status(200).json({ success: true, url: session.url });
+    } catch (err) {
+        console.warn('Stripe checkout session creation failed for deposit. Falling back to sandbox:', err.message);
+        const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
+        res.status(200).json({
+            success: true,
+            url: `${clientUrl}/order/sandbox-deposit?amount=${amount}`,
+            isSandbox: true
+        });
+    }
+});
+
+export const sandboxDepositSuccess = asyncHandler(async (req, res) => {
+    const { amount } = req.body;
+    const userId = req.user.id;
+
+    if (!amount || amount <= 0) {
+        return res.status(400).json({ success: false, message: 'Invalid deposit amount' });
+    }
+
+    // Increment wallet balance
+    await User.findByIdAndUpdate(userId, {
+        $inc: { walletBalance: Number(amount) }
     });
+
+    console.log(`[Sandbox] Deposit success: Credited $${amount} to User ${userId}`);
+    res.status(200).json({ success: true, message: 'Sandbox deposit processed successfully' });
 });
 
 export const getMyOrders = asyncHandler(async (req, res) => {

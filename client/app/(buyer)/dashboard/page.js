@@ -23,7 +23,11 @@ function CountdownTimer({ endTime }) {
 
             setIsUrgent(h < 24);
 
-            if (h > 24) return `${Math.floor(h / 24)}d ${h % 24}h`;
+            if (h > 24) {
+                const days = Math.floor(h / 24);
+                const remainingHours = h % 24;
+                return `${days}d ${remainingHours}h ${m}m`;
+            }
             if (h > 0) return `${h}h ${m}m ${s}s`;
             return `${m}m ${s}s`;
         };
@@ -47,6 +51,8 @@ import { api } from "@/lib/api";
 
 export default function BuyerDashboardPage() {
   const [depositOpen, setDepositOpen] = useState(false);
+  const [depositAmount, setDepositAmount] = useState("");
+  const [depositLoading, setDepositLoading] = useState(false);
   const user = useAuthStore((state) => state.user);
   
   const [stats, setStats] = useState({ activeBids: 0, itemsWon: 0, totalSpent: 0, savedItems: 0 });
@@ -56,6 +62,31 @@ export default function BuyerDashboardPage() {
   const [recommendations, setRecommendations] = useState([]);
   const [activity, setActivity] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const handleDeposit = async (e) => {
+    e.preventDefault();
+    if (!depositAmount || Number(depositAmount) < 5) {
+      alert("Minimum deposit is $5");
+      return;
+    }
+    setDepositLoading(true);
+    try {
+      const res = await api('/api/buyer/wallet/deposit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: Number(depositAmount) }),
+      });
+      if (res.success && res.url) {
+        window.location.href = res.url;
+      } else {
+        alert("Failed to create deposit checkout session.");
+      }
+    } catch (err) {
+      alert(err.message || "Failed to initiate deposit");
+    } finally {
+      setDepositLoading(false);
+    }
+  };
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -193,12 +224,25 @@ export default function BuyerDashboardPage() {
             >
               <div className="brutal bg-white p-6 md:p-8">
                 <h3 className="font-display text-2xl font-black mb-4">Add Funds to Wallet</h3>
-                <div className="flex flex-col md:flex-row gap-4">
-                  <input type="number" placeholder="Amount (USD)" className="flex-1 rounded-xl border-[3px] border-[var(--ink)] bg-[var(--background)] px-6 py-4 font-display text-xl font-bold focus:bg-white focus:outline-none focus:ring-4 focus:ring-[var(--electric)]/30" />
-                  <button className="rounded-xl border-[3px] border-[var(--ink)] bg-[var(--ink)] px-8 py-4 font-display text-lg font-black uppercase text-white shadow-[4px_4px_0_0_var(--hotpink)] transition-transform hover:-translate-y-1">
-                    Proceed to Payment
+                <form onSubmit={handleDeposit} className="flex flex-col md:flex-row gap-4">
+                  <input 
+                    type="number" 
+                    placeholder="Amount (USD, min $5)" 
+                    value={depositAmount}
+                    onChange={(e) => setDepositAmount(e.target.value)}
+                    required
+                    min="5"
+                    disabled={depositLoading}
+                    className="flex-1 rounded-xl border-[3px] border-[var(--ink)] bg-[var(--background)] px-6 py-4 font-display text-xl font-bold focus:bg-white focus:outline-none focus:ring-4 focus:ring-[var(--electric)]/30" 
+                  />
+                  <button 
+                    type="submit"
+                    disabled={depositLoading}
+                    className="rounded-xl border-[3px] border-[var(--ink)] bg-[var(--ink)] px-8 py-4 font-display text-lg font-black uppercase text-white shadow-[4px_4px_0_0_var(--hotpink)] transition-transform hover:-translate-y-1 disabled:opacity-50"
+                  >
+                    {depositLoading ? "Redirecting..." : "Proceed to Payment"}
                   </button>
-                </div>
+                </form>
               </div>
             </motion.div>
           )}

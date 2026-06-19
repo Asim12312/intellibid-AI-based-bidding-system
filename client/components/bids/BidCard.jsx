@@ -30,7 +30,11 @@ export default function BidCard({ bid }) {
             if (diff <= 0) return 'Ended';
             const hours = Math.floor(diff / (1000 * 60 * 60));
             const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-            if (hours > 24) return `${Math.floor(hours / 24)}d left`;
+            if (hours > 24) {
+                const days = Math.floor(hours / 24);
+                const remainingHours = hours % 24;
+                return `${days}d ${remainingHours}h ${minutes}m`;
+            }
             if (hours > 0) return `${hours}h ${minutes}m`;
             return `${minutes}m left`;
         };
