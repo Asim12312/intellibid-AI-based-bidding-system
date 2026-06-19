@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "reactivate-users": "node reactivate.js"
+    "reactivate-users": "node reactivate.js",
     "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest",
     "test:unit": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --testPathIgnorePatterns=integration",
     "test:integration": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --testPathPattern=integration"
