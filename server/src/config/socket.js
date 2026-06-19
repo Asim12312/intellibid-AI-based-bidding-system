@@ -5,9 +5,12 @@ import User from '../models/user.model.js';
 let io;
 
 export const initSocket = (httpServer) => {
+    const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
+    const corsOrigin = clientUrl.endsWith('/') ? clientUrl.slice(0, -1) : clientUrl;
+
     io = new Server(httpServer, {
         cors: {
-            origin: process.env.CLIENT_URL || 'http://localhost:3000',
+            origin: corsOrigin,
             credentials: true,
         },
     });

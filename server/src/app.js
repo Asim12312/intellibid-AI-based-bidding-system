@@ -22,8 +22,12 @@ const app = express();
 app.use(helmet({
   crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" }
 }));
+// CORS configuration with automatic trailing slash removal
+const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
+const corsOrigin = clientUrl.endsWith('/') ? clientUrl.slice(0, -1) : clientUrl;
+
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:3000',
+  origin: corsOrigin,
   credentials: true,
 }));
 app.use(limiter);
