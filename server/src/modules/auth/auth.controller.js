@@ -18,6 +18,7 @@ export const signup = asyncHandler(async (req, res) => {
     res.status(201).json({
         success: true,
         message: 'Account created. Check your email to verify.',
+        token,
         user,
     });
 });
@@ -30,6 +31,7 @@ export const login = asyncHandler(async (req, res) => {
     res.status(200).json({
         success: true,
         message: 'Logged in successfully',
+        token,
         user,
     });
 });
@@ -51,7 +53,7 @@ export const googleLogin = asyncHandler(async (req, res) => {
 
     sendTokenCookie(res, token);
 
-    res.status(200).json({ success: true, user });
+    res.status(200).json({ success: true, token, user });
 });
 
 export const forgotPassword = asyncHandler(async (req, res) => {
@@ -113,6 +115,7 @@ export const upgradeToSeller = asyncHandler(async (req, res) => {
     res.status(200).json({
         success: true,
         message: 'Congratulations! Your account has been upgraded to Seller.',
+        token: newToken,
         user: {
             id: user._id,
             email: user.email,
