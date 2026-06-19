@@ -5,7 +5,9 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "nodemon src/server.js"
+    "dev": "nodemon src/server.js",
+    "test": "npx --node-options=\"--experimental-vm-modules\" jest",
+    "test:watch": "npx --node-options=\"--experimental-vm-modules\" jest --watch"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -23,7 +25,9 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
-    "nodemon": "^3.1.14"
+    "jest": "^30.4.2",
+    "nodemon": "^3.1.14",
+    "supertest": "^7.2.2"
   },
   "description": "",
   "keywords": [],
