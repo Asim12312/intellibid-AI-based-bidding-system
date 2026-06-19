@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import AIPicksPage from '../app/(buyer)/ai-picks/page';
+import AIPicksPage from '@/app/(buyer)/buyer/ai-picks/page';
 
 describe('Watchlist actions', () => {
     it('allows a user to click the watchlist button', () => {

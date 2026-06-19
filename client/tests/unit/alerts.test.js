@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import AlertsPage from '../app/(buyer)/alerts/page';
+import AlertsPage from '@/app/(buyer)/dashboard/page';
 
 describe('Alerts Hub Feature', () => {
     it('renders alerts list', () => {
