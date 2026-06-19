@@ -49,12 +49,7 @@ export const googleLogin = asyncHandler(async (req, res) => {
     const { idToken } = req.body;
     const { token, user } = await googleLoginService(idToken);
 
-    res.cookie('token', token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
+    sendTokenCookie(res, token);
 
     res.status(200).json({ success: true, user });
 });
