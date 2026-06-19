@@ -1,5 +1,5 @@
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
-import ChatbotPage from '../app/(buyer)/chatbot/page';
+import ChatbotPage from '@/app/(chat)/chat/page';
 
 describe('Chatbot AI Interaction', () => {
     beforeEach(() => {
