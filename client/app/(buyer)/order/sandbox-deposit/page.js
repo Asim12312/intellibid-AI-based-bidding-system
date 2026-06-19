@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import { motion } from 'framer-motion';
 import { ShieldCheck, CreditCard, Loader2, AlertCircle, Wallet, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
-export default function SandboxDeposit() {
+function SandboxDepositContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const amount = searchParams.get('amount') || '0';
@@ -177,5 +177,17 @@ export default function SandboxDeposit() {
 
             </div>
         </div>
+    );
+}
+
+export default function SandboxDeposit() {
+    return (
+        <Suspense fallback={
+            <div className="flex h-screen items-center justify-center bg-[var(--background)]">
+                <Loader2 className="h-8 w-8 animate-spin text-[var(--electric)]" />
+            </div>
+        }>
+            <SandboxDepositContent />
+        </Suspense>
     );
 }

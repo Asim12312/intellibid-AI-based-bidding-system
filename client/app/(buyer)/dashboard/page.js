@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
@@ -50,7 +50,7 @@ import Link from "next/link";
 import { useAuthStore } from "@/store/authStore";
 import { api } from "@/lib/api";
 
-export default function BuyerDashboardPage() {
+function BuyerDashboardContent() {
   const [depositOpen, setDepositOpen] = useState(false);
   const [depositAmount, setDepositAmount] = useState("");
   const [depositLoading, setDepositLoading] = useState(false);
@@ -510,4 +510,18 @@ export default function BuyerDashboardPage() {
       </main>
     </>
   );
+}
+
+export default function BuyerDashboardPage() {
+    return (
+        <Suspense fallback={
+            <div className="flex items-center justify-center min-h-screen bg-[var(--background)]">
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl border-[3px] border-[var(--ink)] bg-[var(--electric)] text-white shadow-[4px_4px_0_0_var(--ink)] animate-pulse">
+                    <Activity className="h-8 w-8 animate-spin" />
+                </div>
+            </div>
+        }>
+            <BuyerDashboardContent />
+        </Suspense>
+    );
 }

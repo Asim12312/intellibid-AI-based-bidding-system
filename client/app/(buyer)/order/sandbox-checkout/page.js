@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import { motion } from 'framer-motion';
 import { ShieldCheck, CreditCard, Loader2, AlertCircle, ShoppingBag, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
-export default function SandboxCheckout() {
+function SandboxCheckoutContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const orderId = searchParams.get('orderId');
@@ -208,5 +208,17 @@ export default function SandboxCheckout() {
 
             </div>
         </div>
+    );
+}
+
+export default function SandboxCheckout() {
+    return (
+        <Suspense fallback={
+            <div className="flex h-screen items-center justify-center bg-[var(--background)]">
+                <Loader2 className="h-8 w-8 animate-spin text-[var(--electric)]" />
+            </div>
+        }>
+            <SandboxCheckoutContent />
+        </Suspense>
     );
 }
