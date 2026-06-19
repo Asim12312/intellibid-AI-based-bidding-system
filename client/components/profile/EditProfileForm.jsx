@@ -10,6 +10,32 @@ import {
     AlertCircle, Info, Building2, ExternalLink 
 } from "lucide-react";
 
+const FALLBACK_COUNTRIES = [
+    { name: "Pakistan", flag: "https://flagcdn.com/pk.svg", code: "+92" },
+    { name: "United States", flag: "https://flagcdn.com/us.svg", code: "+1" },
+    { name: "United Kingdom", flag: "https://flagcdn.com/gb.svg", code: "+44" },
+    { name: "Canada", flag: "https://flagcdn.com/ca.svg", code: "+1" },
+    { name: "Australia", flag: "https://flagcdn.com/au.svg", code: "+61" },
+    { name: "United Arab Emirates", flag: "https://flagcdn.com/ae.svg", code: "+971" },
+    { name: "Saudi Arabia", flag: "https://flagcdn.com/sa.svg", code: "+966" },
+    { name: "Germany", flag: "https://flagcdn.com/de.svg", code: "+49" },
+    { name: "France", flag: "https://flagcdn.com/fr.svg", code: "+33" },
+    { name: "India", flag: "https://flagcdn.com/in.svg", code: "+91" },
+    { name: "China", flag: "https://flagcdn.com/cn.svg", code: "+86" },
+    { name: "Japan", flag: "https://flagcdn.com/jp.svg", code: "+81" },
+    { name: "Turkey", flag: "https://flagcdn.com/tr.svg", code: "+90" },
+    { name: "Singapore", flag: "https://flagcdn.com/sg.svg", code: "+65" },
+    { name: "Malaysia", flag: "https://flagcdn.com/my.svg", code: "+60" },
+    { name: "Bangladesh", flag: "https://flagcdn.com/bd.svg", code: "+880" },
+    { name: "Sri Lanka", flag: "https://flagcdn.com/lk.svg", code: "+94" },
+    { name: "Nepal", flag: "https://flagcdn.com/np.svg", code: "+977" },
+    { name: "South Africa", flag: "https://flagcdn.com/za.svg", code: "+27" },
+    { name: "Italy", flag: "https://flagcdn.com/it.svg", code: "+39" },
+    { name: "Spain", flag: "https://flagcdn.com/es.svg", code: "+34" },
+    { name: "Brazil", flag: "https://flagcdn.com/br.svg", code: "+55" },
+    { name: "Russian Federation", flag: "https://flagcdn.com/ru.svg", code: "+7" },
+];
+
 export default function EditProfileForm({ user, onSaved }) {
     const setUser = useAuthStore((s) => s.setUser);
     const [loading, setLoading] = useState(false);
@@ -52,7 +78,7 @@ export default function EditProfileForm({ user, onSaved }) {
         };
     });
 
-    const [countries, setCountries] = useState([]);
+    const [countries, setCountries] = useState(FALLBACK_COUNTRIES);
     const [cities, setCities] = useState([]);
     const [loadingCountries, setLoadingCountries] = useState(false);
     const [loadingCities, setLoadingCities] = useState(false);
@@ -71,7 +97,8 @@ export default function EditProfileForm({ user, onSaved }) {
                 })).sort((a, b) => a.name.localeCompare(b.name));
                 setCountries(formatted);
             } catch (err) {
-                console.error("Failed to fetch countries", err);
+                console.warn("Failed to fetch countries, falling back to static list:", err);
+                setCountries(FALLBACK_COUNTRIES);
             } finally {
                 setLoadingCountries(false);
             }
