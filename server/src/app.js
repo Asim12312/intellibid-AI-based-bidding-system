@@ -20,7 +20,7 @@ const app = express();
 
 // security middleware
 app.use(helmet({
-  crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" }
+  crossOriginOpenerPolicy: { policy: "unsafe-none" }
 }));
 // CORS configuration with automatic trailing slash removal
 const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
