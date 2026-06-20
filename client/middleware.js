@@ -9,12 +9,19 @@ export function middleware(req) {
   const isProtected = protectedRoutes.some((r) => pathname.startsWith(r));
 
   if (isProtected && !token) {
-    return NextResponse.redirect(new URL('/login', req.url));
+    const response = NextResponse.redirect(new URL('/login', req.url));
+    response.headers.set('Cross-Origin-Opener-Policy', 'unsafe-none');
+    response.headers.set('Cross-Origin-Embedder-Policy', 'unsafe-none');
+    return response;
   }
 
-  return NextResponse.next();
+  const response = NextResponse.next();
+  response.headers.set('Cross-Origin-Opener-Policy', 'unsafe-none');
+  response.headers.set('Cross-Origin-Embedder-Policy', 'unsafe-none');
+  return response;
 }
 
 export const config = {
-  matcher: ['/buyer/:path*', '/seller/:path*', '/admin/:path*'],
+  // Match ALL routes so COOP header is set everywhere (needed for Google OAuth)
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 };
